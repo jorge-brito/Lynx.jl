@@ -5,7 +5,7 @@ DocMeta.setdocmeta!(Lynx, :DocTestSetup, :(using Lynx); recursive=true)
 
 makedocs(;
     modules=[Lynx],
-    authors="Jorge Brito <jorge.brito.json@gmail.com> and contributors",
+    authors="Jorge Brito <jorge.brito.json@gmail.com>",
     repo="https://github.com/jorge-brito/Lynx.jl/blob/{commit}{path}#{line}",
     sitename="Lynx.jl",
     format=Documenter.HTML(;
@@ -15,4 +15,8 @@ makedocs(;
     pages=[
         "Home" => "index.md",
     ],
+)
+
+deploydocs(
+    repo = "github.com/jorge-brito/Lynx.jl.git",
 )
