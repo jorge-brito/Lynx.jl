@@ -59,7 +59,7 @@ jobs:
             using Documenter: doctest
             using Lynx
             doctest(Lynx)'
-      - run: julia --project=docs docs/make.jl
+      - run: xvfb-run julia --project=docs docs/make.jl
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
