@@ -58,7 +58,7 @@ const _ref_dict = IdDict{Any, Any}()
 
 """
     gcpreserve(widget::GtkWidget, obj)
-Preserve `obj` until `widget` has been [`destroy`](@ref)ed.
+Preserve `obj` until `widget` has been destroyed.
 """
 function gcpreserve(widget::Union{GtkWidget,GtkCanvas}, obj)
     _ref_dict[obj] = obj
