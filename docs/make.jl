@@ -19,4 +19,5 @@ makedocs(;
 
 deploydocs(
     repo = "github.com/jorge-brito/Lynx.jl.git",
+    target = "build"
 )
