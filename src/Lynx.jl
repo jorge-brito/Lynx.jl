@@ -61,6 +61,7 @@ import Observables.ObserverFunction
 const G = GAccessor
 
 include("utils.jl")
+include("gfunctions.jl")
 include("math.jl")
 include("widgets.jl")
 include("grid.jl")
