@@ -40,6 +40,7 @@ mutable struct Canvas <: Widget{GtkCanvas}
     mouse::CanvasEvents
     width::Real
     height::Real
+    tickcb::Cuint
     function Canvas(width::Integer = -1, height::Integer = -1; props...)
         gcanvas = @widget GtkCanvas(width, height)
         for id in gcanvas.mouse.ids
@@ -47,12 +48,14 @@ mutable struct Canvas <: Widget{GtkCanvas}
         end
         empty!(gcanvas.mouse.ids)
         mouse = CanvasEvents(gcanvas)
-        canvas = new(gcanvas, mouse, -1, -1)
+        canvas = new(gcanvas, mouse, -1, -1, 0)
         canvas["is-focus"] = true
         gcpreserve(gcanvas, canvas)
         return canvas
      end
 end
+
+sized(canvas::Canvas) = canvas.widget.is_sized
 
 function Base.getproperty(canvas::Canvas, prop::Symbol)
     prop == :width && return width(getfield(canvas, 1))
