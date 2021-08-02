@@ -117,7 +117,7 @@ const Baseline = Gtk.GtkAlign.BASELINE
 getprop(w::GtkWidget, prop::SymString, T::DataType) = get_gtk_property(w, prop, T)
 setprop!(w::GtkWidget, prop::SymString, value) = set_gtk_property!(w, prop, value)
 onevent(callback::Function, event::SymString, w::GtkWidget) = signal_connect(callback, w, event)
-disconnect(w::GtkWidget, id::Cuint) = signal_handler_disconnect(w, id)
+disconnect(w::GtkWidget, id) = signal_handler_disconnect(w, id)
 
 """
         @function function_name(args::Types...) = return_type
