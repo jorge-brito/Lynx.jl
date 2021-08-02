@@ -2,7 +2,7 @@ using Lynx
 using Colors
 using Luxor
 
-App("Waves", 800, 600)
+Lynx.init("Waves", 800, 600)
 
 const settings = (
     # background color

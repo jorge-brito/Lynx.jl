@@ -7,30 +7,44 @@
 using Lynx
 using Luxor
 
-const config = (
-    background = "#111",
-    cell_color = "white",
+Lynx.init("The Game of Life", 1280, 720, layout = SideBar(
+    size = .25,
+    props = (
+        margin = 20,
+        spacing = 20
+    )
+))
+
+global config = (
+    background = ColorButton("#111", hexpand=true),
+    cell_color = ColorButton("white", hexpand=true),
     resolution = 10,
-    width = 800,
-    height = 600,
     pause = "space", 
-    clear = "Escape"
+    clear = "Escape",
+    pause_btn = Button("Pause")
 )
 
-@info """Running 'The Game of Life' example
-    Press $(config.pause) to pause/unpause
-    Press $(config.clear) to clear all cells
-    Click and drag with mouse to activate cells
-"""
-
-App("The Game of Life", config.width, config.height)
+@use Label("Press $(config.pause) to pause/unpause")
+@use Label("Press $(config.clear) to clear all cells")
+@use Label("Click and drag with mouse to activate cells")
 
 function GameOfLife()
     paused = false
     res = config.resolution
-    rows = width(@window) ÷ res
-    cols = height(@window) ÷ res
+    rows = @width() ÷ res
+    cols = @height() ÷ res
     grid = rand(0:1, rows, cols)
+
+    onevent(:clicked, config.pause_btn) do btn
+        paused = !paused
+        config.pause_btn["label"] = paused ? "Unpause" : "Pause"
+    end
+
+    @use Grid(spacing = 10,
+        "Background color: " => config.background,
+        "Cell color: " => config.cell_color,
+        "#hide" => config.pause_btn,
+    ) # Grid
 
     onkeypress(@window) do w, event
         key = event.keyval
@@ -48,8 +62,8 @@ function GameOfLife()
     end
     
     function update(dt)
-        background(config.background)
-        sethue(config.cell_color)
+        background(config.background[])
+        sethue(config.cell_color[])
 
         for i in 1:rows, j in 1:cols
             x = (i - 1) * res

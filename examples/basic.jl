@@ -9,8 +9,8 @@ function App()
         background("black")
         sethue("yellowgreen")
 
-        x = noise(offset[1]) * width(canvas)
-        y = noise(offset[2]) * height(canvas)
+        x = noise(offset[1]) * canvas.width
+        y = noise(offset[2]) * canvas.height
         
         circle(x, y, 4, :fill)
         push!(points, Point(x, y))
@@ -24,11 +24,11 @@ function App()
         end
     end
 
-    Window("Basic example", 800, 600, children = (
-        Paned(:v, position = 520, children = (
+    Window("Basic example", 800, 600,
+        Paned(:v, position = 520,
             Canvas(update)
-        )) # Paned
-    )) # Window
+        ) # Paned
+    ) # Window
 end
 
-showall(App())
+Lynx.showall(App())
