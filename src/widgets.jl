@@ -1,171 +1,322 @@
-abstract type AbstractWidget{T} end
+abstract type Widget{T} end
 
-mutable struct Widget{T} <: AbstractWidget{T}
+# --------------------------------------------------------------------------------
+# ----------------------------------| Containers |--------------------------------
+# --------------------------------------------------------------------------------
+
+abstract type Container{T} <: Widget{T} end
+
+mutable struct Window <: Container{GtkWindow}
     widget::GtkWidget
-    function Widget{T}(w::GtkWidget; children::Union{Tuple, AbstractWidget} = (), props...) where {T <: GtkWidget}
-        self = new{T}(w)
-        setprop!(self; props...)
-        if children isa AbstractWidget
-            push!(self, children)
-        else
-            push!(self, children...)
-        end
-        return self
-    end
+end
+
+function Window(title::String, width::Int, height::Int, children::Widget...; props...)
+    widget = @container GtkWindow(title, width, height)
+    return Window(widget)
+end
+
+"""
+A container used to pack widgets together.
+"""
+mutable struct Box <: Container{GtkBox}
+    widget::GtkWidget
 end
 """
-        Button(text; props...) -> Widget{GtkButton}
+        Box(direction, children...; props...) -> Box
 
-A widget that emits a signal when clicked on.
-"""
-Button(text::String; props...) = @widget GtkButton(text)
-""" 
-        CheckBox(; props...) -> Widget{GtkCheckButton}
+Creates a [`Box`](@ref) widget.
 
-A widget with with a check box.
+The `direction` parameter determines the direction the widgets 
+are packed. `:v` for vertical or `:h` for horizontal.
 """
-CheckBox(; props...) = @widget GtkCheckButton()
-"""
-        ColorButton(color; props...) -> Widget{GtkColorButton}
-
-A button to launch a color selection dialog
-"""
-ColorButton(color::Colorant; props...) = @widget GtkColorButton(convert(GdkRGBA, color))
-ColorButton(color::String; props...) = ColorButton(parse(Colorant, color); props...)
-"""
-        ComboBox(args...; props...) -> Widget{GtkComboBox}
-
-A widget used to choose from a list of items
-"""
-ComboBox(args...; props...) = @widget GtkComboBox(args...)
-"""
-    ComboBoxText(args...; props...) -> Widget{GtkComboBoxText}
-
-A simple, text-only combo box
-"""
-ComboBoxText(args...; props...) = @widget GtkComboBoxText(args...)
-"""
-        GLArea(args...; props...) -> Widget{GtkGLArea}
-
-A widget for custom drawing with OpenGL
-"""
-GLArea(args...; props...) = @widget GtkGLArea(args...)
-"""
-        Image([filepath]; props...) --> Widget{GtkImage}
-
-A widget displaying an image
-"""
-Image(; props...) = @widget GtkImage()
-Image(filepath::String; props...) = @widget GtkImage(filepath)
-"""
-        Label(text; props...) -> Widget{GtkLabel}
-
-A widget that displays a small to medium amount of text
-"""
-Label(text::String; props...) = @widget GtkLabel(text)
-"""
-        LinkButton(text; props...) -> Widget{GtkLinkButton}
-
-Create buttons bound to a URL
-"""
-LinkButton(args...; props...) = @widget GtkLinkButton(args...)
-"""
-        ProgressBar(; props...) -> Widget{GtkProgressBar}
-
-A widget which indicates progress visually
-"""
-ProgressBar(; props...) = @widget GtkProgressBar()
-"""
-        SpinButton(range; props...) -> Widget{GtkSpinButton}
-
-Retrieve an integer or floating-point number from the user
-"""
-SpinButton(range::AbstractRange, args...; props...) = @widget GtkSpinButton(range, args...)
-"""
-        Spinner(; props...) -> Widget{GtkSpinner}
-
-Show a spinner animation
-"""
-Spinner(; props...) = @widget GtkSpinner()
-"""
-        Switch(; props...) -> Widget{GtkSwitch}
-
-A “light switch” style toggle
-"""
-Switch(; props...) = @widget GtkSwitch()
-"""
-        TextField(; props...) -> Widget{GtkEntry}
-
-A single line text entry field
-"""
-TextField(args...; props...) = @widget GtkEntry(args...)
-"""
-        ToggleBtn(; props...) -> Widget{GtkToggleButton}
-
-Create buttons which retain their state
-"""
-ToggleBtn(args...; props...) = @widget GtkToggleButton(args...)
-"""
-        VolumeBtn(; props...) -> Widget{GtkVolumeButton}
-
-A button which pops up a volume control
-"""
-VolumeBtn(args...; props...) = @widget GtkVolumeButton(args...)
-"""
-        Slider(range, vertical = false; props...) -> Widget{GtkScale}
-
-A slider widget for selecting a value from a range
-"""
-function Slider(range::AbstractRange, vertical = false; value::Real = first(range), props...)
-    self = Widget{GtkScale}(GtkScale(vertical, range); props...)
-    value!(self, value)
-    return self
+function Box(direction::Symbol, children::Widget...; props...)
+    widget = @container GtkBox(direction)
+    return Box(widget)
 end
 """
-        Box(layout; props...) -> Widget{GtkBox}
+A widget with two adjustable panes.
+"""
+mutable struct Paned <: Container{GtkPaned}
+    widget::GtkWidget
+end
+"""
+        Paned(direction, children...; props...) -> Paned
 
-A container for packing widgets in a single row or column
-"""
-Box(layout::Symbol; props...) = @container GtkBox(layout)
-"""
-        FileChooserDialog(args...; props...) -> Widget{GtkFileChooserDialog}
+Creates a [`Paned`](@ref) widget.
 
-A file chooser dialog, suitable for “File/Open” or “File/Save” commands
+The `direction` parameter determines how the two panes are
+arranged, either horizontally `:h`, or vertically `:v`.
 """
-FileChooserDialog(args...; props...) = @container GtkFileChooserDialog(args...)
+function Paned(direction::Symbol, children::Widget...; props...)
+    widget = @container GtkPaned(direction)
+    return Paned(widget)
+end
 """
-        Frame(args...; props...) -> Widget{GtkFrame}
+Adds scrollbars to its child widget.
+"""
+mutable struct Scrolled <: Container{GtkScrolledWindow}
+    widget::GtkWidget
+end
+"""
+        Scrolled(children::Widget...; props...) -> Scrolled
 
+Creates a [`Scrolled`](@ref) widget.
+"""
+function Scrolled(children::Widget...; props...)
+    widget = @container GtkScrolledWindow()
+    return Scrolled(widget)
+end
+"""
 A bin with a decorative frame and optional label
 """
-Frame(args...; props...) = @container GtkFrame(args...)
-"""
-        MessageDialog(args...; props...) -> Widget{GtkMessageDialog}
+mutable struct Frame <: Container{GtkFrame}
+    widget::GtkWidget
+end
 
-A convenient message window
-"""
-MessageDialog(args...; props...) = @container GtkMessageDialog(args...)
-"""
-        Notebook(args...; props...) -> Widget{GtkNotebook}
+function Frame(children::Widget...; props...)
+    widget = @container GtkFrame()
+    return Frame(widget)
+end
 
-    A tabbed notebook container
-"""
-Notebook(args...; props...) = @container GtkNotebook(args...)
-"""
-        Paned(layout; props...) -> Widget{GtkPaned}
+function Frame(label::String, children::Widget...; props...)
+    widget = @container GtkFrame(label)
+    return Frame(widget)
+end
 
-A widget with two adjustable panes
-"""
-Paned(layout::Symbol; props...) = @container GtkPaned(layout)
-"""
-        Scrolled(args...; props...) -> Widget{GtkScrolledWindow}
+function Frame(label::Widget, children::Widget...; props...)
+    widget = @container GtkFrame(label.widget)
+    return Frame(widget)
+end
 
-Adds scrollbars to its child widget
-"""
-Scrolled(args...; props...) = @container GtkScrolledWindow(args...)
-"""
-        Window(title, width, height; props...) -> Widget{GtkWindow}
+mutable struct Notebook <: Container{GtkNotebook}
+    widget::GtkWidget
+end
 
-Toplevel which can contain other widgets
+function Notebook(children::Widget...; props...)
+    widget = @container GtkNotebook()
+    return Notebook(widget)
+end
+
+mutable struct TreeView <: Container{GtkTreeView}
+    widget::GtkWidget
+end
+
+function TreeView(children...; props...)
+    widget = @container GtkTreeView(types...)
+    return TreeView(widget)
+end
+
+# ----------------------------------------------------------------------------
+# ----------------------------------| Inputs |--------------------------------
+# ----------------------------------------------------------------------------
+
+abstract type Input{T, S} <: Widget{S} end
+abstract type RangeWidget{T, S} <: Input{T, S} end
+
 """
-Window(title::String, width::Int, height::Int; props...) = @container GtkWindow(title, width, height)
+A slider widget for selecting a value from a range
+"""
+mutable struct Slider{T} <: RangeWidget{T, GtkScale}
+    widget::GtkWidget
+    value::Observable{T}
+    adjustment::GtkAdjustment
+end
+
+function Slider(range::AbstractRange{T}, vertical::Bool = false; start::Real = middle(range), props...) where {T}
+    widget = @widget GtkScale(vertical, range)
+    adj = G.adjustment(widget)
+    this = Slider{T}(widget, Observable{T}(start), adj)
+    G.value(adj, start)
+    signal_connect(adj, "value-changed") do args...
+        this.value[] = G.value(adj)
+    end
+    return this
+end
+"""
+Retrieve an integer or floating-point number from the user
+"""
+mutable struct SpinButton{T} <: RangeWidget{T, GtkSpinButton}
+    widget::GtkWidget
+    value::Observable{T}
+    adjustment::GtkAdjustment
+end
+
+function SpinButton(range::AbstractRange{T}; start::Real = middle(range), props...) where {T}
+    widget = @widget GtkSpinButton(range)
+    adj = G.adjustment(widget)
+    this = SpinButton{T}(widget, Observable{T}(start), adj)
+    G.value(adj, start)
+    signal_connect(adj, "value-changed") do args...
+        this.value[] = G.value(adj)
+    end
+    return this
+end
+"""
+A single line text entry field.
+"""
+mutable struct TextField <: Input{String, GtkEntry}
+    widget::GtkWidget
+    value::Observable{String}
+end
+
+function TextField(; props...)
+    widget = @widget GtkEntry()
+    text = get(props, :text, "")
+    this = TextField(widget, Observable(text))
+    onevent("changed", this) do args...
+        this.value[] = Gtk.bytestring(G.text(widget))
+    end
+    return this
+end
+
+"""
+A button to launch a color selection dialog
+"""
+mutable struct ColorButton{T <: Colorant} <: Input{T, GtkColorButton}
+    widget::GtkWidget
+    value::Observable{T}
+end
+
+function ColorButton(color::T; props...) where {T <: Colorant}
+    widget = @widget GtkColorButton(convert(GdkRGBA, color))
+    this = ColorButton{T}(widget, Observable(color))
+    onevent("notify::color", widget) do args...
+        this.value[] = this["rgba", GdkRGBA]
+    end
+    return this
+end
+
+ColorButton(color::String; props...) = ColorButton(parse(Colorant, color); props...)
+
+abstract type Activable{W} <: Input{Bool, W} end
+
+"""
+Create buttons which retain their state
+"""
+mutable struct ToggleButton <: Activable{GtkToggleButton}
+    widget::GtkWidget
+    value::Observable{Bool}
+end
+
+function ToggleButton(text::String; props...)
+    widget = @widget GtkToggleButton(text)
+    this = ToggleButton(widget, Observable(false))
+    onevent("toggled", widget) do args...
+        this.value[] = G.active(widget)
+    end
+    return this
+end
+
+"""
+Create widgets with a discrete toggle button
+"""
+mutable struct CheckBox <: Activable{GtkCheckButton}
+    widget::GtkWidget
+    value::Observable{Bool}
+end
+
+function CheckBox(checked::Bool; props...)
+    widget = @widget GtkCheckButton()
+    this = CheckBox(widget, Observable(checked))
+    G.active(widget, checked)
+    onevent("toggled", widget) do args...
+        this.value[] = G.active(widget)
+    end
+    return this
+end
+
+"""
+A “light switch” style toggle
+"""
+mutable struct Switch <: Activable{GtkSwitch}
+    widget::GtkWidget
+    value::Observable{Bool}
+end
+
+function Switch(checked::Bool; props...)
+    widget = @widget GtkSwitch()
+    this = Switch(widget, Observable(checked))
+    this["active"] = true
+    onevent("notify::active", this) do args...
+        setindex!(this.value, this["active", Bool])
+    end
+    return this
+end
+
+mutable struct Dropdown <: Input{String, GtkComboBoxText}
+    widget::GtkWidget
+    choices::Tuple{Vararg{String}}
+    index::Observable{Int}
+    value::Observable{String}
+end
+
+"""
+A widget used to choose from a list of items
+"""
+function Dropdown(choices::String...; active::Int = 1, props...)
+    widget = @widget GtkComboBoxText()
+    index = Observable(active)
+    for choice in choices
+        push!(widget, choice)
+    end
+    this = Dropdown(widget, choices, index, Observable(choices[active]))
+    this["active"] = active
+    onevent("changed", this) do args...
+        this.index[] = getprop(widget, :active, Int)
+        this.value[] = Gtk.bytestring( G.active_text(widget) )
+    end
+    return this
+end
+
+# ------------------------------------------------------------------------------------
+# ----------------------------------| Common Widgets |--------------------------------
+# ------------------------------------------------------------------------------------
+"""
+A widget that emits a signal when clicked on
+"""
+mutable struct Button <: Widget{GtkButton}
+    widget::GtkWidget
+    Button(text::String; props...) = new(@widget GtkButton(text))
+end
+
+function Button(clicked::Function, text::String; props...)
+    button = Button(text; props...)
+    onevent(clicked, "clicked", button)
+    return button
+end
+
+"""
+A widget that displays a small to medium amount of text
+"""
+mutable struct Label <: Widget{GtkLabel}
+    widget::GtkWidget
+    Label(text::String; props...) = new(@widget GtkLabel(text))
+end
+
+"""
+A widget which indicates progress visually
+
+Use the [`fill!`](@ref) and the [`pulse!`](@ref) functions
+to control the progress bar.
+"""
+mutable struct ProgressBar <: Widget{GtkProgressBar}
+    widget::GtkWidget
+    ProgressBar(; props...) = new(@widget GtkProgressBar())
+end
+
+"""
+A widget for displaying an image.
+"""
+mutable struct Image <: Widget{GtkImage}
+    widget::GtkWidget
+    Image(; props...) = new(@widget GtkImage())
+    Image(file::AbstractString; props...) = new(@widget GtkImage(file))
+end
+
+"""
+Custom drawing with OpenGL.
+"""
+mutable struct GLArea <: Widget{GtkGLArea}
+    widget::GtkWidget
+    GLArea(; props...) = new(@widget GtkGLArea())
+end

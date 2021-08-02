@@ -1,6 +1,8 @@
 using Lynx
 using Test
+using Observables
+using Colors
+import Gtk: showall
 
-@testset "Lynx.jl" begin
-    # Write your tests here.
-end
+include("widgets.jl")
+include("grid.jl")

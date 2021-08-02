@@ -1,6 +1,3 @@
-using Gtk: libgtk
-using Gtk: libgdk
-
 struct MouseEvent
     x::Real
     y::Real
@@ -18,11 +15,11 @@ struct ScrollEvent
 end
 
 struct CanvasEvents
-    mouseup::Signal{MouseEvent}
-    mousedown::Signal{MouseEvent}
-    mousemove::Signal{MouseEvent}
-    mousedrag::Signal{MouseEvent}
-    scroll::Signal{ScrollEvent}
+    mouseup::Observable{MouseEvent}
+    mousedown::Observable{MouseEvent}
+    mousemove::Observable{MouseEvent}
+    mousedrag::Observable{MouseEvent}
+    scroll::Observable{ScrollEvent}
     ids::Vector{Culong}
     widget::GtkWidget
     function CanvasEvents(canvas::GtkCanvas)
@@ -38,22 +35,29 @@ struct CanvasEvents
     end
 end
 
-mutable struct Canvas <: AbstractWidget{GtkCanvas}
+mutable struct Canvas <: Widget{GtkCanvas}
     widget::GtkCanvas
     mouse::CanvasEvents
+    width::Real
+    height::Real
     function Canvas(width::Integer = -1, height::Integer = -1; props...)
-        gcanvas = GtkCanvas(width, height)
+        gcanvas = @widget GtkCanvas(width, height)
         for id in gcanvas.mouse.ids
-            signal_handler_disconnect(gcanvas, id)
+            disconnect(gcanvas, id)
         end
         empty!(gcanvas.mouse.ids)
         mouse = CanvasEvents(gcanvas)
-        canvas = new(gcanvas, mouse)
-        !isempty(props) && setprop!(canvas; props...)
-        canvas.is_focus = true
+        canvas = new(gcanvas, mouse, -1, -1)
+        canvas["is-focus"] = true
         gcpreserve(gcanvas, canvas)
         return canvas
      end
+end
+
+function Base.getproperty(canvas::Canvas, prop::Symbol)
+    prop == :width && return width(getfield(canvas, 1))
+    prop == :height && return height(getfield(canvas, 1))
+    return getfield(canvas, prop)
 end
 
 events(canvas::Canvas) = getfield(canvas, :mouse)

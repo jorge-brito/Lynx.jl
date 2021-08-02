@@ -1,3 +1,63 @@
+Gtk.waitforsignal(self::Widget, signal) = Gtk.waitforsignal(gwidget(self), signal)
+"""
+        @waitfor widget.event
+
+Block the current task until the `event` is triggered for `widget`.
+
+## Examples:
+
+```julia
+window = Window("Hello, world", 800, 600)
+
+... # Some UI stuff
+
+if !isinteractive()
+    # If the code is not running on a interactive julia session
+    # (e.g. the REPL), then the line below will block the current
+    # task until the window is destroyed
+    @waitfor window.destroy
+end
+```
+"""
+macro waitfor(expr)
+    if @capture(expr, widget_.event_)
+        eventname = QuoteNode(event)
+        return :( Gtk.waitforsignal($( esc(widget) ), $(eventname)) )
+    end
+end
+
+"""
+        @on widget.event() do args... body... end
+
+Adds a `event` callback to the corresponding `widget`
+
+## Usage
+
+```julia
+@on window.destroy() do args...
+    # do something when the window is destroyed
+end
+
+@on button.clicked() do args...
+    # do something when the button is clicked
+end
+
+```
+"""
+macro on(expr)
+    if @capture(expr, widget_.event_() do args__ body__ end)
+        eventname = QuoteNode(event)
+        return esc(
+            quote
+                onevent($(eventname), $(widget)) do $(args...)
+                    $(body...)
+                end
+            end
+        )
+    end
+end
+
+
 function gkey(key::SymString)
     _key = Symbol("GDK_KEY_$key")
     if isdefined(Gtk.GConstants, _key)
@@ -12,11 +72,7 @@ macro key_str(str)
     Expr(:call, :gkey, esc(str))
 end
 
-function onevent(callback::Function, event::SymString, self::AbstractWidget)
-    return signal_connect(callback, gwidget(self), event)
-end
-
-function setprop!(self::AbstractWidget, prop::SymString, callback::Function)
+function setprop!(self::Widget, prop::SymString, callback::Function)
     prop = string(prop)
     if startswith(prop, "on")
         eventname = string(prop[3:end])
@@ -26,11 +82,11 @@ function setprop!(self::AbstractWidget, prop::SymString, callback::Function)
     end
 end
 
-function onkeypress(callback::Function, widget::AbstractWidget)
+function onkeypress(callback::Function, widget::Widget)
     onevent(callback, "key-press-event", widget)
 end
 
-function onkeypress(callback::Function, key::Integer, widget::AbstractWidget)
+function onkeypress(callback::Function, key::Integer, widget::Widget)
     onevent("key-press-event", widget) do widget, event
         if event.keyval == key
             callback(event)
@@ -55,7 +111,7 @@ function ondraw(callback::Function, canvas::GtkCanvas; framerate = 60.0, hotrelo
     end
 end
 
-ondraw(callback::Function, canvas::Canvas; kwargs...) = ondraw(callback, canvas[]; kwargs...)
+ondraw(callback::Function, canvas::Canvas; kwargs...) = ondraw(callback, gwidget(canvas); kwargs...)
 
 function GtkTickCallback(::Ptr{GObject}, ::Ptr{GObject}, ptr::Ptr{Nothing})
     canvas = unsafe_load(convert(Ptr{GtkCanvas}, ptr))
@@ -77,7 +133,7 @@ function onupdate(callback::Function, canvas::GtkCanvas; kwargs...)
     end
 end
 
-onupdate(callback::Function, canvas::Canvas; kwargs...) = onupdate(callback, canvas[]; kwargs...)
+onupdate(callback::Function, canvas::Canvas; kwargs...) = onupdate(callback, gwidget(canvas); kwargs...)
 
 """
         onmousedown(callback, canvas)
@@ -85,7 +141,7 @@ onupdate(callback::Function, canvas::Canvas; kwargs...) = onupdate(callback, can
 The `mouse-down` event is fired when the user `press` with the mouse on the canvas.
 """
 function onmousedown(callback::Function, canvas::Canvas)
-    on(events(canvas).mousedown) do event
+    on(canvas.mouse.mousedown) do event
         @secure callback(event) "'onmousedown' event callback triggered a exception"
     end
 end
@@ -95,7 +151,7 @@ end
 The `mouse-up` event is fired when the user `release` the mouse on the canvas.
 """
 function onmouseup(callback::Function, canvas::Canvas)
-    on(events(canvas).mouseup) do event
+    on(canvas.mouse.mouseup) do event
         @secure callback(event) "'onmouseup' event callback triggered a exception"
     end
 end
@@ -105,7 +161,7 @@ end
 The `mouse-move` event is fired when the user `moves` the cursor on the canvas.
 """
 function onmousemove(callback::Function, canvas::Canvas)
-    on(events(canvas).mousemove) do event
+    on(canvas.mouse.mousemove) do event
         @secure callback(event) "'onmousemove' event callback triggered a exception"
     end
 end
@@ -115,7 +171,7 @@ end
 The `mouse-drag` event is fired when the user holds `down` and `move` the cursor on the canvas.
 """
 function onmousedrag(callback::Function, canvas::Canvas)
-    on(events(canvas).mousedrag) do event
+    on(canvas.mouse.mousedrag) do event
         @secure callback(event) "'onmousedrag' event callback triggered a exception"
     end
 end
@@ -125,7 +181,7 @@ end
 The `scroll` event is fired when the user `scrolls` with the mouse-wheel on the canvas.
 """
 function onscroll(callback::Function, canvas::Canvas)
-    on(events(canvas).scroll) do event
+    on(canvas.mouse.scroll) do event
         @secure callback(event) "'onscroll' event callback triggered a exception"
     end
 end

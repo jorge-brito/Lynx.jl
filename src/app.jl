@@ -1,31 +1,31 @@
 """
-An `App` is a basic structure that holds a `window`, a `canvas`
+An `LynxApp` is a basic structure that holds a `window`, a `canvas`
 and other `widgets` to make a interactive application with a
 few lines of code.
 """
-mutable struct App
+mutable struct LynxApp
     window::Widget
     canvas::Canvas
     framerate::Float64
     targetfps::Float64
-    widgets::Vector{<:AbstractWidget}
+    widgets::Vector{<:Widget}
     layout::Function
     loop::Bool
-    App() = new()
+    frame::Ref{AbstractMatrix}
+    LynxApp() = new()
 end
 
-const CURRENT_APP = Ref{App}()
+const CURRENT_APP = Ref{LynxApp}()
 
 function getapp()
     if isassigned(CURRENT_APP)
 	    return CURRENT_APP[]
     else
-	error("No App has been created. 
-	    Make sure a App has been created before using this function.")
+	    error("No LynxApp has been created. Create one before using this function.")
     end
 end
 
-function setapp(app::App)
+function setapp(app::LynxApp)
     CURRENT_APP[] = app
 end
 
@@ -45,11 +45,29 @@ Returns the current `Canvas`.
 var"@canvas"(args...) = :( getapp().canvas )
 
 """
-	@window() -> Widget{GtkWindow}
+	@window() -> Window
 
 Returns the current `Window`.
 """
 var"@window"(args...) = :( getapp().window )
+"""
+        @width -> Int
+
+The width of the current window.
+"""
+var"@width"(args...) = :( getapp().window |> width )
+"""
+        @height -> Int
+
+The height of the current window.
+"""
+var"@height"(args...) = :( getapp().window |> height )
+"""
+        @size -> Tuple{Int, Int}
+
+The width and height of the current window.
+"""
+var"@size"(args...) = :( getapp().window |> size )
 
 """
 	@framerate() -> Float64
@@ -87,21 +105,22 @@ Sets the current layout.
 layout!(layout::Function) = setproperty!(@app, :layout, layout)
 
 """
-        use!(widget) -> AbstractWidget
+        use!(widget) -> Widget
 
 Adds the `widget` to the current application and returns it.
 """
-use!(widget::AbstractWidget) = (push!(getapp().widgets, widget); widget)
+use!(widget::Widget) = (push!(getapp().widgets, widget); widget)
 
-function App(title::String, width::Int, height::Int; layout::Function = CanvasOnly)
-    app = App()
+function init(title::String, width::Int, height::Int; layout::Function = CanvasOnly)
+    app = LynxApp()
     app.window = Window(title, width, height)
     app.canvas = Canvas()
     app.targetfps = 60.0
     app.framerate = 0.0
     app.layout = layout
     app.loop = true
-    app.widgets = AbstractWidget[]
+    app.widgets = Widget[]
+    app.frame = Ref{AbstractMatrix}()
     setapp(app)
     return app
 end
@@ -116,16 +135,21 @@ the newest version of `update` will be called.
 """
 function run!(update::Function; await::Bool = false, hotreload::Bool = false)
     app = @app
-    body = app.layout(app.window, app.canvas, app.widgets)
-    @assert body isa AbstractWidget "The return of a layout must be a Widget. Received $(typeof(body))"
+    body = app.layout(app.window, app.canvas, app.widgets...)
+    @assert body isa Widget "The return of a layout must be a Widget. Received $(typeof(body))"
     push!(app.window, body)
-    if app.loop
-        onupdate(app.canvas; framerate = app.targetfps, hotreload) do dt
+    onupdate(app.canvas; framerate = app.targetfps, hotreload) do dt
+        if app.loop
             app.framerate = inv(dt)
             update(dt)
+        else
+            if !isassigned(app.frame)
+                update(dt)
+                app.frame[] = image_as_matrix()
+            else
+                placeimage(app.frame[])
+            end
         end
-    else
-        ondraw(update, app.canvas; framerate = app.targetfps, hotreload)
     end
     showall(app.window)
     await && @waitfor app.window.destroy
