@@ -65,7 +65,7 @@ end
 run!(update, await=true)
 ```
 
-The second way, you create the [`Widgets`](@ref) yourself:
+The second way, you create the [`Widget`](@ref)s yourself:
 
 ```julia
 using Lynx
