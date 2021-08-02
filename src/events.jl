@@ -184,10 +184,7 @@ function onscroll(callback::Function, canvas::Canvas)
 end
 
 function onresize(callback::Function, widget::GtkWidget)
-    return Gtk.on_signal_resize(
-        Base.inferencebarrier((args...) -> (callback(widget); nothing)), 
-        widget
-    )
+    return onevent(callback, "size-allocate", widget)
 end
 
 onresize(callback::Function, widget::Widget) = onresize(callback, gwidget(widget))
