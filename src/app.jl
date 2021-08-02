@@ -11,7 +11,6 @@ mutable struct LynxApp
     widgets::Vector{<:Widget}
     layout::Function
     loop::Bool
-    frame::Ref{AbstractMatrix}
     LynxApp() = new()
 end
 
@@ -30,10 +29,10 @@ function setapp(app::LynxApp)
 end
 
 """
-	@app() -> App
+	@app() -> LynxApp
 
-Returns the current `App` or throws an exception
-if no App has been created.
+Returns the current `LynxApp` or throws an exception
+if no LynxApp has been created.
 """
 var"@app"(args...) = :( getapp() )
 
@@ -55,19 +54,19 @@ var"@window"(args...) = :( getapp().window )
 
 The width of the current window.
 """
-var"@width"(args...) = :( getapp().window |> width )
+var"@width"(args...) = :( sized(@canvas) ? width(@canvas) : width(@window) )
 """
         @height -> Int
 
 The height of the current window.
 """
-var"@height"(args...) = :( getapp().window |> height )
+var"@height"(args...) = :( sized(@canvas) ? height(@canvas) : height(@window) )
 """
         @size -> Tuple{Int, Int}
 
 The width and height of the current window.
 """
-var"@size"(args...) = :( getapp().window |> size )
+var"@size"(args...) = :( sized(@canvas) ? size(@canvas) : size(@window) )
 
 """
 	@framerate() -> Float64
@@ -111,6 +110,11 @@ Adds the `widget` to the current application and returns it.
 """
 use!(widget::Widget) = (push!(getapp().widgets, widget); widget)
 
+"""
+        init(title, width, height; layout = CanvasOnly) -> LynxApp
+
+Creates a new [`LynxApp`](@ref).
+"""
 function init(title::String, width::Int, height::Int; layout::Function = CanvasOnly)
     app = LynxApp()
     app.window = Window(title, width, height)
@@ -120,35 +124,40 @@ function init(title::String, width::Int, height::Int; layout::Function = CanvasO
     app.layout = layout
     app.loop = true
     app.widgets = Widget[]
-    app.frame = Ref{AbstractMatrix}()
     setapp(app)
     return app
+end
+
+function dontloop!(canvas::Canvas)
+    gtk_widget_remove_tick_callback(gwidget(canvas), canvas.tickcb)
 end
 
 """
         run!(update::Function; await = false, hotreload = false)
 
-Run the current `App` with the given `update` function. 
+Run the current `LynxApp` with the given `update` function. 
 If `await` is true, the main task will be blocked until 
 the user closes the window. If `hotreload` is true, only 
 the newest version of `update` will be called.
 """
-function run!(update::Function; await::Bool = false, hotreload::Bool = false)
+function run!(update::Function, setup::Function = () -> nothing; await::Bool = false, hotreload::Bool = false)
     app = @app
     body = app.layout(app.window, app.canvas, app.widgets...)
     @assert body isa Widget "The return of a layout must be a Widget. Received $(typeof(body))"
     push!(app.window, body)
+
+    id = Ref{Cuint}(0)
+    id[] = onresize(app.canvas) do canvas
+        setup()
+        disconnect(app.canvas, id[])
+    end
+
     onupdate(app.canvas; framerate = app.targetfps, hotreload) do dt
+        update(dt)
         if app.loop
             app.framerate = inv(dt)
-            update(dt)
         else
-            if !isassigned(app.frame)
-                update(dt)
-                app.frame[] = image_as_matrix()
-            else
-                placeimage(app.frame[])
-            end
+            dontloop!(app.canvas)
         end
     end
     showall(app.window)
