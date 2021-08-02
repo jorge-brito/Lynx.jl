@@ -1,6 +1,7 @@
 gwidget(w::Widget) = getfield(w, :widget)
 getprop(w::Widget, name::SymString, T::DataType) = getprop(w.widget, name, T)
 setprop!(w::Widget, name::SymString, value) = setprop!(w.widget, name, value)
+disconnect(w::Widget, id::Cuint) = disconnect(w.widget, id)
 
 Base.get(w::Widget, name::SymString, T::DataType) = getprop(w, name, T)
 Base.getindex(w::Widget, name::SymString, T::DataType) = getprop(w, name, T)
@@ -37,7 +38,7 @@ function value(input::Input)
     return input.value[]
 end
 """
-        value(!widget::Input, value) -> Nothing
+        value!(widget::Input, value) -> Nothing
 
 Sets the `value` of a `Input` widget.
 """
