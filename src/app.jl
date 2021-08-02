@@ -133,12 +133,15 @@ function dontloop!(canvas::Canvas)
 end
 
 """
-        run!(update::Function; await = false, hotreload = false)
+        run!(update::Function [, setup::Function]; await = false, hotreload = false)
 
 Run the current `LynxApp` with the given `update` function. 
 If `await` is true, the main task will be blocked until 
 the user closes the window. If `hotreload` is true, only 
 the newest version of `update` will be called.
+
+You can also specify a `setup` function that will be called when
+the window is created.
 """
 function run!(update::Function, setup::Function = () -> nothing; await::Bool = false, hotreload::Bool = false)
     app = @app
