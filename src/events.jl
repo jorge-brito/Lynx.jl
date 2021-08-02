@@ -123,17 +123,14 @@ function onupdate(callback::Function, canvas::GtkCanvas; kwargs...)
     ondraw(callback, canvas; kwargs...)
     ptr = @cfunction(GtkTickCallback, Bool, (Ptr{GObject}, Ptr{GObject}, Ptr{Cvoid}))
     ref = Ref(canvas)
-    GC.@preserve ptr begin
-        @ccall libgtk.gtk_widget_add_tick_callback(
-            canvas::Ptr{GObject},
-            ptr::Ptr{Cvoid},
-            ref::Ref{GtkCanvas},
-            C_NULL::Ptr{Cvoid},
-        )::Cuint
+    return GC.@preserve ptr begin
+        gtk_widget_add_tick_callback(canvas, ptr, ref, C_NULL)
     end
 end
 
-onupdate(callback::Function, canvas::Canvas; kwargs...) = onupdate(callback, gwidget(canvas); kwargs...)
+function onupdate(callback::Function, canvas::Canvas; kwargs...)
+    canvas.tickcb = onupdate(callback, gwidget(canvas); kwargs...)
+end
 
 """
         onmousedown(callback, canvas)
@@ -185,3 +182,12 @@ function onscroll(callback::Function, canvas::Canvas)
         @secure callback(event) "'onscroll' event callback triggered a exception"
     end
 end
+
+function onresize(callback::Function, widget::GtkWidget)
+    return Gtk.on_signal_resize(
+        Base.inferencebarrier((args...) -> (callback(widget); nothing)), 
+        widget
+    )
+end
+
+onresize(callback::Function, widget::Widget) = onresize(callback, gwidget(widget))
