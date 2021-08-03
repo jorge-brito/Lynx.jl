@@ -11,7 +11,6 @@ mutable struct LynxApp
     widgets::Vector{<:Widget}
     layout::Function
     loop::Bool
-    setup_id::Cuint
     LynxApp() = new()
 end
 
@@ -150,19 +149,22 @@ function run!(update::Function, setup::Function = () -> nothing; await::Bool = f
     @assert body isa Widget "The return of a layout must be a Widget. Received $(typeof(body))"
     push!(app.window, body)
 
-    app.setup_id = onevent("configure-event", app.canvas) do args...
-        setup()
-        disconnect(app.canvas, app.setup_id)
-    end
+    setup_called = false
 
     onupdate(app.canvas; framerate = app.targetfps, hotreload) do dt
-        update(dt)
-        if app.loop
-            app.framerate = inv(dt)
+        if !setup_called
+            setup()
+            setup_called = true
         else
-            dontloop!(app.canvas)
+            update(dt)
+            if app.loop
+                app.framerate = inv(dt)
+            else
+                dontloop!(app.canvas)
+            end
         end
     end
+    
     showall(app.window)
     await && @waitfor app.window.destroy
     return nothing
