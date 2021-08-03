@@ -54,19 +54,19 @@ var"@window"(args...) = :( getapp().window )
 
 The width of the current canvas.
 """
-var"@width"(args...) = :( width(getpp().canvas) )
+var"@width"(args...) = :( width(getapp().canvas) )
 """
         @height -> Int
 
 The height of the current canvas.
 """
-var"@height"(args...) = :( height(getpp().canvas) )
+var"@height"(args...) = :( height(getapp().canvas) )
 """
         @size -> Tuple{Int, Int}
 
 The width and height of the current canvas.
 """
-var"@size"(args...) = :( size(getpp().canvas) )
+var"@size"(args...) = :( size(getapp().canvas) )
 
 """
 	@framerate() -> Float64
