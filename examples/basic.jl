@@ -9,6 +9,7 @@ function setup()
     # this function is called
     # when the window is created
     @info "Starting"
+    @show @width() @height() @size @framerate()
 end
 
 # drawing is done here
