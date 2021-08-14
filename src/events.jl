@@ -54,9 +54,21 @@ macro on(expr)
                 end
             end
         )
+    elseif @capture(expr, widget_.event_)
+        eventname = QuoteNode(event)
+        return esc(
+            quote
+                begin
+                    obs = Observable{Widget}($(widget))
+                    onevent($(eventname), $(widget)) do args...
+                        obs[] = $(widget)
+                    end
+                    obs
+                end
+            end
+        )
     end
 end
-
 
 function gkey(key::SymString)
     _key = Symbol("GDK_KEY_$key")
@@ -72,6 +84,8 @@ macro key_str(str)
     Expr(:call, :gkey, esc(str))
 end
 
+keyname(event::Gtk.GdkEventKey) = keyval_name(event.keyval)
+
 function setprop!(self::Widget, prop::SymString, callback::Function)
     prop = string(prop)
     if startswith(prop, "on")
@@ -83,35 +97,34 @@ function setprop!(self::Widget, prop::SymString, callback::Function)
 end
 
 function onkeypress(callback::Function, widget::Widget)
-    onevent(callback, "key-press-event", widget)
-end
-
-function onkeypress(callback::Function, key::Integer, widget::Widget)
-    onevent("key-press-event", widget) do widget, event
-        if event.keyval == key
+    if hasmethod(callback, Tuple{<:Widget, Gtk.GdkEventKey})
+        onevent(callback, "key-press-event", widget)
+    else
+        onevent("key-press-event", widget) do widget, event
             callback(event)
         end
     end
 end
 
-function ondraw(callback::Function, canvas::GtkCanvas; framerate = 60.0, hotreload = false)
-    lastframe = time_ns()
-    interval = inv(framerate + 12)
-    @guarded draw(canvas) do c
-        now = time_ns()
-        dt = (now - lastframe) / 10e8
-        if dt > interval
-            lastframe = now - (dt % interval)
-            w, h = width(c), height(c)
-            drawing = Drawing(w, h, :image)
-            drawing.cr = Gtk.getgc(c)
-            hotreload ? Base.invokelatest(callback, dt) : (callback)(dt)
-            finish()
+function onkeypress(callback::Function, key::Integer, widget::Widget)
+    onkeypress(widget) do widget, event
+        if key == event.keyval
+            callback(widget, event)
         end
     end
 end
 
-ondraw(callback::Function, canvas::Canvas; kwargs...) = ondraw(callback, gwidget(canvas); kwargs...)
+function ondraw(callback::Function, canvas::GtkCanvas)
+    @guarded draw(canvas) do c
+        w, h = size(c)
+        drawing = Drawing(w, h, :image)
+        drawing.cr = Gtk.getgc(c)
+        callback(canvas)
+        finish()
+    end
+end
+
+ondraw(callback::Function, canvas::Canvas) = ondraw(callback, gwidget(canvas))
 
 function GtkTickCallback(::Ptr{GObject}, ::Ptr{GObject}, ptr::Ptr{Nothing})
     canvas = unsafe_load(convert(Ptr{GtkCanvas}, ptr))
@@ -119,8 +132,8 @@ function GtkTickCallback(::Ptr{GObject}, ::Ptr{GObject}, ptr::Ptr{Nothing})
     return true
 end
 
-function onupdate(callback::Function, canvas::GtkCanvas; kwargs...)
-    ondraw(callback, canvas; kwargs...)
+function onupdate(callback::Function, canvas::GtkCanvas)
+    ondraw(callback, canvas)
     ptr = @cfunction(GtkTickCallback, Bool, (Ptr{GObject}, Ptr{GObject}, Ptr{Cvoid}))
     ref = Ref(canvas)
     return GC.@preserve ptr begin
@@ -128,8 +141,17 @@ function onupdate(callback::Function, canvas::GtkCanvas; kwargs...)
     end
 end
 
-function onupdate(callback::Function, canvas::Canvas; kwargs...)
-    canvas.tickcb = onupdate(callback, gwidget(canvas); kwargs...)
+function onupdate(callback::Function, canvas::Canvas; fps::Ref{Float64} = Ref(60.0))
+    then = Ref{Float64}(time_ns())
+    canvas.tickcb = onupdate(gwidget(canvas)) do canvas
+        now = time_ns()
+        dt = (now - then[]) / 10e8
+        interval = inv(fps[])
+        if dt > interval
+            callback(dt, canvas)
+        end
+        then[] = now - (dt % interval)
+    end
 end
 
 """
