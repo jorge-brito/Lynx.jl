@@ -12,7 +12,7 @@ end
 
 function Window(title::String, width::Int, height::Int, children::Widget...; props...)
     widget = @container GtkWindow(title, width, height)
-    return Window(widget)
+    return @gcpreserve Window(widget)
 end
 
 """
@@ -31,7 +31,7 @@ are packed. `:v` for vertical or `:h` for horizontal.
 """
 function Box(direction::Symbol, children::Widget...; props...)
     widget = @container GtkBox(direction)
-    return Box(widget)
+    return @gcpreserve Box(widget)
 end
 """
 A widget with two adjustable panes.
@@ -49,7 +49,7 @@ arranged, either horizontally `:h`, or vertically `:v`.
 """
 function Paned(direction::Symbol, children::Widget...; props...)
     widget = @container GtkPaned(direction)
-    return Paned(widget)
+    return @gcpreserve Paned(widget)
 end
 """
 Adds scrollbars to its child widget.
@@ -64,7 +64,7 @@ Creates a [`Scrolled`](@ref) widget.
 """
 function Scrolled(children::Widget...; props...)
     widget = @container GtkScrolledWindow()
-    return Scrolled(widget)
+    return @gcpreserve Scrolled(widget)
 end
 """
 A bin with a decorative frame and optional label
@@ -75,17 +75,19 @@ end
 
 function Frame(children::Widget...; props...)
     widget = @container GtkFrame()
-    return Frame(widget)
+    return @gcpreserve Frame(widget)
 end
 
 function Frame(label::String, children::Widget...; props...)
     widget = @container GtkFrame(label)
-    return Frame(widget)
+    return @gcpreserve Frame(widget)
 end
 
 function Frame(label::Widget, children::Widget...; props...)
-    widget = @container GtkFrame(label.widget)
-    return Frame(widget)
+    widget = @container GtkFrame()
+    this = @gcpreserve Frame(widget)
+    this["label-widget"] = gwidget(label)
+    return this
 end
 
 mutable struct Notebook <: Container{GtkNotebook}
@@ -94,7 +96,7 @@ end
 
 function Notebook(children::Widget...; props...)
     widget = @container GtkNotebook()
-    return Notebook(widget)
+    return @gcpreserve Notebook(widget)
 end
 
 mutable struct TreeView <: Container{GtkTreeView}
@@ -103,7 +105,16 @@ end
 
 function TreeView(children...; props...)
     widget = @container GtkTreeView(types...)
-    return TreeView(widget)
+    return @gcpreserve TreeView(widget)
+end
+
+mutable struct Expander <: Container{GtkExpander}
+    widget::GtkWidget
+end
+
+function Expander(label::AbstractString, children::Widget...; props...)
+    widget = @container GtkExpander(label)
+    return @gcpreserve Expander(widget)
 end
 
 # ----------------------------------------------------------------------------
@@ -125,7 +136,7 @@ end
 function Slider(range::AbstractRange{T}, vertical::Bool = false; start::Real = middle(range), props...) where {T}
     widget = @widget GtkScale(vertical, range)
     adj = G.adjustment(widget)
-    this = Slider{T}(widget, Observable{T}(start), adj)
+    this = @gcpreserve Slider{T}(widget, Observable{T}(start), adj)
     G.value(adj, start)
     signal_connect(adj, "value-changed") do args...
         this.value[] = G.value(adj)
@@ -144,7 +155,7 @@ end
 function SpinButton(range::AbstractRange{T}; start::Real = middle(range), props...) where {T}
     widget = @widget GtkSpinButton(range)
     adj = G.adjustment(widget)
-    this = SpinButton{T}(widget, Observable{T}(start), adj)
+    this = @gcpreserve SpinButton{T}(widget, Observable{T}(start), adj)
     G.value(adj, start)
     signal_connect(adj, "value-changed") do args...
         this.value[] = G.value(adj)
@@ -162,7 +173,7 @@ end
 function TextField(; props...)
     widget = @widget GtkEntry()
     text = get(props, :text, "")
-    this = TextField(widget, Observable(text))
+    this = @gcpreserve TextField(widget, Observable(text))
     onevent("changed", this) do args...
         this.value[] = Gtk.bytestring(G.text(widget))
     end
@@ -179,7 +190,7 @@ end
 
 function ColorButton(color::T; props...) where {T <: Colorant}
     widget = @widget GtkColorButton(convert(GdkRGBA, color))
-    this = ColorButton{T}(widget, Observable(color))
+    this = @gcpreserve ColorButton{T}(widget, Observable(color))
     onevent("notify::color", widget) do args...
         this.value[] = this["rgba", GdkRGBA]
     end
@@ -200,7 +211,7 @@ end
 
 function ToggleButton(text::String; props...)
     widget = @widget GtkToggleButton(text)
-    this = ToggleButton(widget, Observable(false))
+    this = @gcpreserve ToggleButton(widget, Observable(false))
     onevent("toggled", widget) do args...
         this.value[] = G.active(widget)
     end
@@ -217,7 +228,7 @@ end
 
 function CheckBox(checked::Bool; props...)
     widget = @widget GtkCheckButton()
-    this = CheckBox(widget, Observable(checked))
+    this = @gcpreserve CheckBox(widget, Observable(checked))
     G.active(widget, checked)
     onevent("toggled", widget) do args...
         this.value[] = G.active(widget)
@@ -235,7 +246,7 @@ end
 
 function Switch(checked::Bool; props...)
     widget = @widget GtkSwitch()
-    this = Switch(widget, Observable(checked))
+    this = @gcpreserve Switch(widget, Observable(checked))
     this["active"] = true
     onevent("notify::active", this) do args...
         setindex!(this.value, this["active", Bool])
@@ -259,8 +270,8 @@ function Dropdown(choices::String...; active::Int = 1, props...)
     for choice in choices
         push!(widget, choice)
     end
-    this = Dropdown(widget, choices, index, Observable(choices[active]))
-    this["active"] = active
+    this = @gcpreserve Dropdown(widget, choices, index, Observable(choices[active]))
+    this["active"] = active - 1
     onevent("changed", this) do args...
         this.index[] = getprop(widget, :active, Int)
         this.value[] = Gtk.bytestring( G.active_text(widget) )
@@ -276,11 +287,24 @@ A widget that emits a signal when clicked on
 """
 mutable struct Button <: Widget{GtkButton}
     widget::GtkWidget
-    Button(text::String; props...) = new(@widget GtkButton(text))
+end
+
+Button(text::String; props...) = Button(@widget GtkButton(text))
+
+function Button(icon::AbstractString, size::Symbol; props...)
+    gsize::Cuint = getfield(Gtk.GtkIconSize, Symbol(uppercase(string(size))))
+    widget = @widget icon_button(icon, gsize)
+    return @gcpreserve Button(widget)
 end
 
 function Button(clicked::Function, text::String; props...)
     button = Button(text; props...)
+    onevent(clicked, "clicked", button)
+    return button
+end
+
+function Button(clicked::Function, icon::AbstractString, size::Symbol; props...)
+    button = Button(icon, size; props...)
     onevent(clicked, "clicked", button)
     return button
 end
@@ -290,7 +314,10 @@ A widget that displays a small to medium amount of text
 """
 mutable struct Label <: Widget{GtkLabel}
     widget::GtkWidget
-    Label(text::String; props...) = new(@widget GtkLabel(text))
+    function Label(text::String; props...)
+        widget = @widget GtkLabel(text)
+        return @gcpreserve new(widget)
+    end
 end
 
 """
@@ -301,16 +328,32 @@ to control the progress bar.
 """
 mutable struct ProgressBar <: Widget{GtkProgressBar}
     widget::GtkWidget
-    ProgressBar(; props...) = new(@widget GtkProgressBar())
+end
+
+function ProgressBar(; props...)
+    widget = @widget GtkProgressBar()
+    return @gcpreserve ProgressBar(widget)
+end
+
+function ProgressBar(fill::Float64; props...)
+    this = ProgressBar(; props...)
+    fill!(this, fill)
+    return this
 end
 
 """
 A widget for displaying an image.
 """
-mutable struct Image <: Widget{GtkImage}
+mutable struct ImageView <: Widget{GtkImage}
     widget::GtkWidget
-    Image(; props...) = new(@widget GtkImage())
-    Image(file::AbstractString; props...) = new(@widget GtkImage(file))
+    function ImageView(; props...)
+        widget = @widget GtkImage()
+        return @gcpreserve new(widget)
+    end
+    function ImageView(file::AbstractString; props...) 
+        widget = @widget GtkImage(file)
+        return @gcpreserve new(widget)
+    end
 end
 
 """
@@ -318,5 +361,8 @@ Custom drawing with OpenGL.
 """
 mutable struct GLArea <: Widget{GtkGLArea}
     widget::GtkWidget
-    GLArea(; props...) = new(@widget GtkGLArea())
+    function GLArea(; props...)
+        widget = @widget GtkGLArea()
+        return @gcpreserve new(widget)
+    end
 end
