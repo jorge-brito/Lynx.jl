@@ -65,12 +65,12 @@ end
 
 events(canvas::Canvas) = getfield(canvas, :mouse)
 
-function Canvas(update::Function; loop::Bool = true)
-    canvas = Canvas()
+function Canvas(update::Function; loop::Bool = true, width = -1, height = -1, props...)
+    canvas = Canvas(width, height; props...)
     if loop
-        onupdate(dt -> update(dt, canvas), canvas)
+        onupdate(update, canvas)
     else
-        ondraw(dt -> update(dt, canvas), canvas)
+        ondraw(update, canvas)
     end
     return canvas
 end
@@ -109,7 +109,7 @@ function mousescroll_cb(ptr::Ptr, eventp::Ptr, this::CanvasEvents)
     this.scroll[] = ScrollEvent(
         evt.x, 
         evt.y, 
-        evt.direction, 
+        evt.direction == 1 ? -1 : 1, 
         evt.state,
         evt.delta_x,
         evt.delta_y
