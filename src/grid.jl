@@ -110,6 +110,11 @@ function Grid(rows::Vector; props...)
     end
     return self
 end
+
+function Grid(cells::AbstractMatrix; props...)
+    return Grid(collect(eachrow(cells)); props...)
+end
+
 """
         Grid(layout::String, elements::NamedTuple; props...) -> Grid
 
