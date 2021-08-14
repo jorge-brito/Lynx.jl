@@ -2,8 +2,15 @@ using Lynx
 using Test
 using Observables
 using Colors
-import Gtk: showall
 
-include("basic.jl")
+var"@asset_str"(::LineNumberNode, ::Module, path) = joinpath(@__DIR__, "..", "assets", path)
+
+include("input.jl")
 include("widgets.jl")
-include("grid.jl")
+
+@testset "Examples" begin
+    include("../examples/basic.jl")
+    include("../examples/events.jl")
+    include("../examples/images.jl")
+    include("../examples/random.jl")
+end
