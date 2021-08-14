@@ -7,7 +7,7 @@ mutable struct LynxApp
     window::Widget
     canvas::Canvas
     framerate::Float64
-    targetfps::Float64
+    targetfps::Ref{Float64}
     widgets::Vector{<:Widget}
     layout::Function
     loop::Bool
@@ -46,7 +46,7 @@ var"@canvas"(args...) = :( getapp().canvas )
 """
 	@window() -> Window
 
-Returns the current `Window`.
+Returns the current window.
 """
 var"@window"(args...) = :( getapp().window )
 """
@@ -54,13 +54,13 @@ var"@window"(args...) = :( getapp().window )
 
 The width of the current canvas.
 """
-var"@width"(args...) = :( width(getapp().canvas) )
+var"@width"(::LineNumberNode, ::Module) = :( width(getapp().canvas) )
 """
         @height -> Int
 
 The height of the current canvas.
 """
-var"@height"(args...) = :( height(getapp().canvas) )
+var"@height"(::LineNumberNode, ::Module) = :( height(getapp().canvas) )
 """
         @size -> Tuple{Int, Int}
 
@@ -73,7 +73,7 @@ var"@size"(args...) = :( size(getapp().canvas) )
 
 Returns the current `framerate`.
 """
-var"@framerate"(args...) = :( getapp().window )
+var"@framerate"(args...) = :( getapp().framerate )
 
 """
         @use widget
@@ -94,7 +94,13 @@ loop!(x::Bool) = setproperty!(@app, :loop, x)
 
 Sets the current framerate.
 """
-framerate!(x::Real) = x > 0 ? setproperty!(@app, :targetfps, x) : @warn "Framerate must be positive" received=x
+function framerate!(x::Real)
+    if x < 0
+        @warn "Framerate must be positive" received=x
+    else
+        getapp().targetfps[] = x + 12
+    end
+end
 
 """
 	layout!(layout::Function)
@@ -119,7 +125,7 @@ function init(title::String, width::Int, height::Int; layout::Function = CanvasO
     app = LynxApp()
     app.window = Window(title, width, height)
     app.canvas = Canvas()
-    app.targetfps = 60.0
+    app.targetfps = Ref(60.0 + 12.0)
     app.framerate = 0.0
     app.layout = layout
     app.loop = true
@@ -133,17 +139,16 @@ function dontloop!(canvas::Canvas)
 end
 
 """
-        run!(update::Function [, setup::Function]; await = false, hotreload = false)
+        run!(update::Function [, setup::Function]; await = false) -> Nothing
 
 Run the current `LynxApp` with the given `update` function. 
 If `await` is true, the main task will be blocked until 
-the user closes the window. If `hotreload` is true, only 
-the newest version of `update` will be called.
+the user closes the window.
 
 You can also specify a `setup` function that will be called when
 the window is created.
 """
-function run!(update::Function, setup::Function = () -> nothing; await::Bool = false, hotreload::Bool = false)
+function run!(update::Function, setup::Function = () -> nothing; await::Bool = false)
     app = @app
     body = app.layout(app.window, app.canvas, app.widgets...)
     @assert body isa Widget "The return of a layout must be a Widget. Received $(typeof(body))"
@@ -151,7 +156,7 @@ function run!(update::Function, setup::Function = () -> nothing; await::Bool = f
 
     setup_called = false
 
-    onupdate(app.canvas; framerate = app.targetfps, hotreload) do dt
+    onupdate(app.canvas, fps = app.targetfps) do dt, canvas
         if !setup_called
             setup()
             setup_called = true
