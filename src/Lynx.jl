@@ -31,6 +31,7 @@ import Gtk.GtkWidget
 import Gtk.GtkGrid
 import Gtk.GtkWindow
 import Gtk.GtkAdjustment
+import Gtk.GtkExpander
 
 import Gtk.GAccessor
 import Gtk.GdkRGBA
@@ -44,12 +45,14 @@ import Gtk.draw
 import Gtk.width
 import Gtk.height
 import Gtk.GObject
+import Gtk.destroy
 import Gtk.signal_handler_disconnect
 import Gtk.showall
 import Gtk.Cairo
 
 using Gtk: libgtk
 using Gtk: libgdk
+using Gtk: GConstants
 
 using Colors
 using Luxor
@@ -61,7 +64,7 @@ import Observables.ObserverFunction
 const G = GAccessor
 
 include("utils.jl")
-include("gfunctions.jl")
+include("extended.jl")
 include("math.jl")
 include("widgets.jl")
 include("grid.jl")
@@ -70,7 +73,13 @@ include("canvas.jl")
 include("events.jl")
 include("layout.jl")
 include("app.jl")
+include("image.jl")
 
+include("dialog.jl")
+using .Dialog
+
+# Submodules
+export Dialog
 # Constants
 export Baseline
 export Center
@@ -86,6 +95,7 @@ export MouseEvent
 export ScrollEvent
 export SideBar
 export SymString
+export Image
 # Widgets
 export Activable
 export Box
@@ -95,10 +105,11 @@ export CheckBox
 export ColorButton
 export Container
 export Dropdown
+export Expander
 export Frame
 export GLArea
 export Grid
-export Image
+export ImageView
 export Input
 export Label
 export Notebook
@@ -115,6 +126,7 @@ export ToggleButton
 export TreeView
 export Widget
 export Window
+export Picture
 # Functions
 export events
 export framerate!
@@ -136,6 +148,7 @@ export use!
 export value
 export value!
 export gkey
+export keyname
 export onkeypress
 export waitfor
 export ondraw
@@ -149,12 +162,20 @@ export span
 export cspan
 export rspan
 export GridElement
+export slice
+export drawimage
+export getpixels
+export rotr
+export rotl
+export rotr!
+export rotl!
 # Macros
 export @app
 export @canvas
 export @framerate
 export @height
 export @map
+export @new
 export @on
 export @size
 export @unpack
@@ -163,6 +184,7 @@ export @waitfor
 export @width
 export @window
 export @key_str
+export @showall
 
 # Trick to get intellisense on vs-code
 if (false) include("../test/runtests.jl") end
