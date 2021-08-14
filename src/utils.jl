@@ -69,19 +69,6 @@ macro secure(expr, msg)
     end)
 end
 
-const _ref_dict = IdDict{Any, Any}()
-
-"""
-    gcpreserve(widget::GtkWidget, obj)
-Preserve `obj` until `widget` has been destroyed.
-"""
-function gcpreserve(widget::Union{GtkWidget,GtkCanvas}, obj)
-    _ref_dict[obj] = obj
-    signal_connect(widget, :destroy) do w
-        delete!(_ref_dict, obj)
-    end
-end
-
 macro unpack(expr)
     if @capture(expr, (vars__,) = object_)
         res = Expr[]
@@ -115,42 +102,13 @@ const End      = Gtk.GtkAlign.END
 const Baseline = Gtk.GtkAlign.BASELINE
 
 getprop(w::GtkWidget, prop::SymString, T::DataType) = get_gtk_property(w, prop, T)
-setprop!(w::GtkWidget, prop::SymString, value) = set_gtk_property!(w, prop, value)
+setprop!(w::GtkWidget, prop::SymString, value::T) where {T} = set_gtk_property!(w, prop, value)
 onevent(callback::Function, event::SymString, w::GtkWidget) = signal_connect(callback, w, event)
 disconnect(w::GtkWidget, id) = signal_handler_disconnect(w, id)
 
-"""
-        @function function_name(args::Types...) = return_type
-        @function function_name(@ptr(obj::Type)) = return_type
-"""
-macro gfunction(expr)
-    if @capture(expr, fname_(args__) = body__)
-        rtype = first(body)
-        fargs = []
-        cargs = []
-        types = []
-        namesym = QuoteNode(fname)
-        for ex in args
-            if @capture(ex, @ptr(name_::type_) | @ptr(name_::type_, ctype_))
-                push!(fargs, :( $name::$type ))
-                if !isnothing(ctype)
-                    push!(types, :( Ptr{$ctype} ))
-                else
-                    push!(types, :( Ptr{$type} ))
-                end
-                push!(cargs, name)
-            elseif @capture(ex, name_::type_)
-                push!(fargs, ex)
-                push!(types, type)
-                push!(cargs, name)
-            end
-        end
-        res = quote
-            function $(fname)($(fargs...))
-                return ccall(($namesym, libgtk), $rtype, ($(types...),), $(cargs...))
-            end
-        end
-        return esc(res)
+function setprop!(widget::GtkWidget, prop::SymString, signal::Observable)
+    on(signal) do value
+        set_gtk_property!(widget, prop, value)
     end
 end
 
@@ -161,5 +119,33 @@ function Base.iterate(itr::T, state = 1) where T <: Iterable
         return getfield(itr, state), state + 1
     else
         return nothing
+    end
+end
+
+var"@width"(::LineNumberNode, ::Module, widget)  = :( width($( esc(widget) )) )
+var"@height"(::LineNumberNode, ::Module, widget) = :( height($( esc(widget) )) )
+
+const _ref_dict = IdDict{Any, Any}()
+
+"""
+    gcpreserve(widget::GtkWidget, obj)
+Preserve `obj` until `widget` has been destroyed.
+"""
+function gcpreserve(widget::Union{GtkWidget,GtkCanvas}, obj)
+    _ref_dict[obj] = obj
+    signal_connect(widget, :destroy) do w
+        delete!(_ref_dict, obj)
+    end
+end
+
+macro gcpreserve(expr)
+    if @capture(expr, new_(widget_) | new_(widget_, args__))
+        quote
+            begin
+                this = $(expr)
+                gcpreserve($widget, this)
+                this
+            end
+        end |> esc
     end
 end
