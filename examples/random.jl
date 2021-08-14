@@ -4,6 +4,8 @@ using Colors
 
 init("Random particles", 800, 600)
 
+framerate!(60)
+
 N = 100
 xoff = 0.
 yoff = 1000.
