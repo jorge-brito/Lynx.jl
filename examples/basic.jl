@@ -1,27 +1,23 @@
 using Lynx
 using Luxor
 
-Lynx.init("Hello, world!", 400, 400)
-
-t = 0
+Lynx.init("Basic Example", 800, 600)
 
 function setup()
-    # this function is called
-    # when the window is created
-    @info "Starting"
-    @show @width() @height() @size @framerate()
+    @info "Canvas width is $(@width) and height is $(@height)"
 end
 
-# drawing is done here
+time = 0.
+
 function update(dt)
-    @info "Updating..."
     background("#111")
-    origin()
     sethue("yellowgreen")
-    circle(O, 50(cos(t) + 1), :fill)
-    global t += dt
+    origin()
+
+    radius = 50 * (cos(time) + 2)
+    circle(O, radius, :fill)
+
+    global time += dt
 end
 
-# await=true will make sure the program only
-# stops when the window is closed
-run!(update, setup, await=true)
+run!(update, setup)
