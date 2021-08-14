@@ -1,6 +1,6 @@
 gwidget(w::Widget) = getfield(w, :widget)
 getprop(w::Widget, name::SymString, T::DataType) = getprop(w.widget, name, T)
-setprop!(w::Widget, name::SymString, value) = setprop!(w.widget, name, value)
+setprop!(w::Widget, name::SymString, value::T) where {T} = setprop!(w.widget, name, value)
 disconnect(w::Widget, id) = disconnect(w.widget, id)
 
 Base.get(w::Widget, name::SymString, T::DataType) = getprop(w, name, T)
@@ -21,9 +21,13 @@ function Base.setindex!(grid::Grid, child::Widget, indices::Vararg{Union{Int, Un
     setindex!(grid.widget, child.widget, indices...)
 end
 
+Observables.on(f, input::Input; kwargs...) = on(f, input.value; kwargs...)
+
 Gtk.showall(w::Widget) = Gtk.showall(w.widget)
 Gtk.width(w::Widget) = Gtk.width(w.widget)
 Gtk.height(w::Widget) = Gtk.height(w.widget)
+Gtk.destroy(w::Widget) = Gtk.destroy(w.widget)
+
 Base.size(w::Widget) = (Gtk.width(w), Gtk.height(w))
 Base.show(w::Widget) = Gtk.show(w.widget)
 
@@ -87,4 +91,15 @@ Base.fill!(bar::ProgressBar, fraction::Real) = G.fraction(bar.widget, fraction)
 function value!(input::TextField, value::String)
     GAccessor.text(input.widget, value)
     input.value[] = value
+end
+
+function Base.push!(button::Button, image::ImageView)
+    GAccessor.always_show_image(button.widget, true)
+    GAccessor.image(button.widget, image.widget)
+end
+
+macro showall(widget)
+    return quote
+        showall($( esc(widget) ))
+    end
 end
