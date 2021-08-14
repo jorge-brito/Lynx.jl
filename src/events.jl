@@ -149,8 +149,8 @@ function onupdate(callback::Function, canvas::Canvas; fps::Ref{Float64} = Ref(60
         interval = inv(fps[])
         if dt > interval
             callback(dt, canvas)
+            then[] = now - (dt % interval)
         end
-        then[] = now - (dt % interval)
     end
 end
 

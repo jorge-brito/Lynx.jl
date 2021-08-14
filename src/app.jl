@@ -98,7 +98,7 @@ function framerate!(x::Real)
     if x < 0
         @warn "Framerate must be positive" received=x
     else
-        getapp().targetfps[] = x + 12
+        getapp().targetfps[] = x
     end
 end
 
@@ -125,7 +125,7 @@ function init(title::String, width::Int, height::Int; layout::Function = CanvasO
     app = LynxApp()
     app.window = Window(title, width, height)
     app.canvas = Canvas()
-    app.targetfps = Ref(60.0 + 12.0)
+    app.targetfps = Ref(60.0)
     app.framerate = 0.0
     app.layout = layout
     app.loop = true
