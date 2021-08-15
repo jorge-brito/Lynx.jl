@@ -80,8 +80,8 @@ end
 
 getpixels(img::Image) = getpixels(img.surface)
 
-function slice(img::CairoSurface, x::Int, y::Int, width::Int, height::Int)
-    data = getpixels(img)
+function slice(surface::CairoSurface, x::Int, y::Int, width::Int, height::Int)
+    data = getpixels(surface)
     Cairo.finish(surface)
     Cairo.destroy(surface)
     sx = (x + 1):(width - 1)
