@@ -1,107 +1,92 @@
 import Cairo
+import Cairo: CairoSurfaceImage
 import Cairo: CairoSurface
 import Cairo: CairoPattern
 
-mutable struct Image
-    surface::CairoSurface
-    pattern::CairoPattern
-    width::Int
-    height::Int
-    filter::Symbol
-end
-
-function Base.filter!(this::Image, filter::Symbol)
-    cairo_filter = getfield(Cairo, Symbol(uppercase("FILTER_$filter")))
-    Cairo.pattern_set_filter(this.pattern, cairo_filter)
-    this.filter = filter
-end
-
-function Base.replace!(this::Image, surface::Cairo.CairoSurface)
-    this.surface = surface
-    this.pattern = CairoPattern(surface)
-    this.width = Cairo.width(surface)
-    this.height = Cairo.height(surface)
-    filter!(this, this.filter)
-    return this
-end
-
-Base.replace!(this::Image, other::Image) = replace!(this, other.surface)
-
-Base.size(this::Image) = (this.width, this.height)
-
-function Image(img::CairoSurface; filter = :NEAREST)
-    pattern = CairoPattern(img)
-    this = Image(img, pattern, img.width, img.height, filter)
-    filter!(this, filter)
-    return this
-end
-
-Image(filepath::AbstractString; kwargs...) = Image(readpng(filepath); kwargs...)
-
-function Image(image::AbstractMatrix{UInt32}; kwargs...)
-    surface = Cairo.CairoImageSurface(image, Cairo.FORMAT_ARGB32, flipxy=false)
-    return Image(surface; kwargs...)
-end
-
-function Image(image::AbstractMatrix{ARGB32}; kwargs...)
-    pixels = zeros(UInt32, size(image))
-    data = reinterpret(UInt32, image)
-    copy!(pixels, data)
-    return Image(pixels; kwargs...)
-end
-
-function drawimage(this::Image, x::Real = 0, y::Real = 0, width=this.width, height=this.height; centered=false)
-    if centered
-        x, y = x - width/2, y - height/2
-    end
-    ctx = Luxor.get_current_cr()
-    Cairo.save(ctx)
-    sx, sy = width/this.width, height/this.height
-    translate(x, y)
-    scale(sx, sy)
-    Cairo.set_source(ctx, this.pattern)
-    rect(0, 0, width/sx, height/sy, :clip)
-    paint()
-    clipreset()
-    Cairo.restore(ctx)
-end
-
-function getpixels(img::CairoSurface)
-    buffer = zeros(UInt32, floor(Int, img.width), floor(Int, img.height))
-    surface = Cairo.CairoImageSurface(buffer, Cairo.FORMAT_ARGB32, flipxy=false)
-    cr = Cairo.CairoContext(surface)
-    Cairo.set_source_surface(cr, img, 0, 0)
+function image_surface(surface::CairoSurface)
+    w, h = Int(surface.width), Int(surface.height)
+    buffer = zeros(UInt32, w, h)
+    img = Cairo.CairoImageSurface(buffer, Cairo.FORMAT_ARGB32, flipxy=false)
+    cr = Cairo.CairoContext(img)
+    Cairo.set_source_surface(cr, surface, 0, 0)
     Cairo.paint(cr)
-    data = surface.data
-    Cairo.finish(surface)
-    Cairo.destroy(surface)
+    return img
+end
+
+function image_data(surface::CairoSurface)
+    img = image_surface(surface)
+    data = img.data
+    Cairo.finish(img)
+    Cairo.destroy(img)
     return data
 end
 
-getpixels(img::Image) = getpixels(img.surface)
-
-function slice(surface::CairoSurface, x::Int, y::Int, width::Int, height::Int)
-    data = getpixels(surface)
-    Cairo.finish(surface)
-    Cairo.destroy(surface)
-    sx = (x + 1):(width - 1)
-    sy = (y + 1):(height - 1)
-    sliced = data[sx, sy]
-    return Cairo.CairoImageSurface(sliced, Cairo.FORMAT_ARGB32, flipxy=false)
+function image_data(surface::CairoSurfaceImage)
+    return surface.data
 end
 
-function slice(this::Image, x::Int, y::Int, width::Int, height::Int)
-    img = this.surface
-    return Image(slice(img, x, y, width, height); filter = this.filter)
+mutable struct Image <: Iterable
+    surface::CairoSurfaceImage
+    w::Int
+    h::Int
+    Image() = new()
 end
 
-function Base.getindex(this::Image, sx::AbstractUnitRange, sy::AbstractUnitRange)
-    return slice(this, first(sx), first(sy), last(sx), last(sy))
+function Image(surface::CairoSurface)
+    this = Image()
+    this.surface = image_surface(surface)
+    this.w = surface.width
+    this.h = surface.height
+    return this
 end
+
+function Image(pixels::AbstractMatrix{UInt32})
+    Image(Cairo.CairoImageSurface(pixels, Cairo.FORMAT_ARGB32, flipxy=false))
+end
+
+function Image(pixels::AbstractMatrix{ARGB32})
+    Image(reinterpret(UInt32, pixels))
+end
+
+function Image(path::String)
+    surface = Cairo.read_from_png(path)
+    return Image(surface)
+end
+
+function drawimage(img::Image, x::Real = 0, y::Real = 0, w::Real = img.w, h::Real = img.h; centered = false)
+    ctx = Luxor.get_current_cr()
+
+    if centered
+        x = x - w/2
+        y = y - h/2
+    end
+
+    Cairo.image(ctx, img.surface, x, y, w, h)
+end
+
+function slice(image::Image, x::Int, y::Int, w::Int, h::Int)
+    data = image.surface.data
+    sx = (x + 1):w + x
+    sy = (y + 1):h + y
+    pixels = data[sx, sy]
+    return Image(pixels)
+end
+
+function Base.getindex(image::Image, x::Int, y::Int, w::Int, h::Int)
+    return slice(image, x, y, w, h)
+end
+
+function Base.replace!(this::Image, new::Image)
+    this.surface = new.surface
+    this.w = new.w
+    this.h = new.h
+end
+
+Base.size(this::Image) = (this.w, this.h)
 
 function rotl(this::Image)
-    pixels = getpixels(this)
-    return Image(rotl90(pixels), filter = this.filter)
+    pixels = this.surface.data
+    return Image(rotl90(pixels))
 end
 
 function rotl!(this::Image)
@@ -110,8 +95,8 @@ function rotl!(this::Image)
 end
 
 function rotr(this::Image)
-    pixels = getpixels(this)
-    return Image(rotr90(pixels), filter = this.filter)
+    pixels = this.surface.data
+    return Image(rotr90(pixels))
 end
 
 function rotr!(this::Image)
@@ -119,7 +104,7 @@ function rotr!(this::Image)
     replace!(this, new)
 end
 
-function Picture(image::Image, width = image.width, height = image.height)
+function Picture(image::Image, width = image.w, height = image.h)
     canvas = Canvas(width, height)
     ondraw(canvas) do c
         w, h = size(c)
@@ -128,8 +113,8 @@ function Picture(image::Image, width = image.width, height = image.height)
     return canvas
 end
 
-Picture(image::AbstractString) = Picture(Image(image, filter = :Good))
+Picture(image::AbstractString) = Picture(Image(image))
 
-function Picture(image::AbstractString, width::Int, height::Int; filter = :Good)
-    return Picture(Image(image; filter), width, height)
+function Picture(image::AbstractString, width::Int, height::Int)
+    return Picture(Image(image), width, height)
 end
