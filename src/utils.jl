@@ -1,6 +1,4 @@
 const SymString = Union{AbstractString, Symbol}
-# I'm lazy
-const Signal{T} = Observable{T}
 
 macro map(expr...)
     T, ex =
@@ -33,15 +31,32 @@ macro map(expr...)
 end
 
 macro widget(expr)
-    if @capture(expr, GType_(params__))
-        return esc(:( Widget{$GType}($(expr); props...) ))
-    end
+    name = gensym("widget")
+    quote
+        begin
+            $(name) = $(expr)
+            for (prop, value) in pairs(props)
+                setprop!($(name), prop, value)
+            end
+            $(name)
+        end
+    end |> esc
 end
 
 macro container(expr)
-    if @capture(expr, GType_(params__))
-        return esc(:( Widget{$GType}($(expr); children = get(props, :children, ()), props...) ))
-    end
+    name = gensym("widget")
+    quote
+        begin
+            $(name) = $(expr)
+            for (prop, value) in pairs(props)
+                setprop!($(name), prop, value)
+            end
+            for (child) in children
+                push!($(name), child.widget)
+            end
+            $(name)
+        end
+    end |> esc
 end
 
 macro secure(expr, msg)
@@ -53,6 +68,62 @@ macro secure(expr, msg)
         end    
     end)
 end
+
+macro unpack(expr)
+    if @capture(expr, (vars__,) = object_)
+        res = Expr[]
+        for var in vars
+            push!(res, :( $var = $(object).$var ))
+        end
+        return esc(quote $(res...) end)
+    end
+end
+
+function Base.convert(::Type{T}, color::GdkRGBA) where {T <: Colorant}
+    @unpack r, g, b, a = color
+    return convert(T, RGBA(r, g, b, a))
+end
+
+function Base.convert(::Type{GdkRGBA}, color::Colorant)
+    rgba = convert(RGBA, color)
+    @unpack r, g, b, alpha = rgba
+    return GdkRGBA(r, g, b, alpha)
+end
+
+function middle(r::AbstractRange)
+    N = length(r)
+    return isodd(N) ? r[N ÷ 2 + 1] : r[N ÷ 2]
+end
+
+const Center   = Gtk.GtkAlign.CENTER
+const Fill     = Gtk.GtkAlign.FILL
+const Start    = Gtk.GtkAlign.START
+const End      = Gtk.GtkAlign.END
+const Baseline = Gtk.GtkAlign.BASELINE
+
+getprop(w::GtkWidget, prop::SymString, T::DataType) = get_gtk_property(w, prop, T)
+setprop!(w::GtkWidget, prop::SymString, value::T) where {T} = set_gtk_property!(w, prop, value)
+onevent(callback::Function, event::SymString, w::GtkWidget) = signal_connect(callback, w, event)
+disconnect(w::GtkWidget, id) = signal_handler_disconnect(w, id)
+
+function setprop!(widget::GtkWidget, prop::SymString, signal::Observable)
+    on(signal) do value
+        set_gtk_property!(widget, prop, value)
+    end
+end
+
+abstract type Iterable end
+
+function Base.iterate(itr::T, state = 1) where T <: Iterable
+    if state <= fieldcount(T)
+        return getfield(itr, state), state + 1
+    else
+        return nothing
+    end
+end
+
+var"@width"(::LineNumberNode, ::Module, widget)  = :( width($( esc(widget) )) )
+var"@height"(::LineNumberNode, ::Module, widget) = :( height($( esc(widget) )) )
 
 const _ref_dict = IdDict{Any, Any}()
 
@@ -67,12 +138,14 @@ function gcpreserve(widget::Union{GtkWidget,GtkCanvas}, obj)
     end
 end
 
-macro unpack(expr)
-    if @capture(expr, (vars__,) = object_)
-        res = Expr[]
-        for var in vars
-            push!(res, :( $var = $(object).$var ))
-        end
-        return esc(quote $(res...) end)
+macro gcpreserve(expr)
+    if @capture(expr, new_(widget_) | new_(widget_, args__))
+        quote
+            begin
+                this = $(expr)
+                gcpreserve($widget, this)
+                this
+            end
+        end |> esc
     end
 end
