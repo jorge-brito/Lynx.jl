@@ -27,7 +27,7 @@ function App(title; width, height)
                     Item("ImageView", desc = "Displays an image",
                         ImageView(asset"image.png")
                     ) Item("Picture", desc = "Displays an image with custom width and height",
-                        Picture(asset"image.png", 300, 300, filter=:Best)
+                        Picture(asset"image.png", 300, 300)
                     )
                 ]),
                 Item("Slider", desc = "Horizontal slider",
