@@ -12,6 +12,7 @@ MacroTools = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
 Observables = "510215fc-4207-5dde-b226-833fc4488ee2"
 
 [compat]
+MacroTools = "0.5"
 Colors = "0.12"
 Observables = "0.4"
 Gtk = "1"
