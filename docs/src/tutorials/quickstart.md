@@ -42,7 +42,7 @@ Lynx.init("Basic Example", 800, 600)
 
 The [`init`](@ref) function expects the `title`, `width` and `height` of the window as parameters.
 
-The, we define our `setup` and `update` functions:
+Then, we define our `setup` and `update` functions:
 
 ```julia
 function setup()
@@ -76,7 +76,7 @@ has passed since the first frame.
 The `update` function expects a single argument `dt`, which is the
 amount of time between the last and the current frame.
 
-The, we run our application using the [`run!`](@ref) function, passing
+Then, we run our application using the [`run!`](@ref) function, passing
 the `update` and `setup` functions:
 
 ```julia
