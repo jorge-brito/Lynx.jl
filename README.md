@@ -9,6 +9,10 @@ toolkit from [Gtk.jl](https://github.com/JuliaGraphics/Gtk.jl).
 
 > [Documentation][docs-url] of this package is in progress.
 
+## Attribution
+
+Spritesheet located at [assets/fruits.png](assets/fruits.png) is made by [FrozenTaurus](https://frozentaurus.itch.io/food-assets?download). Download [here](https://frozentaurus.itch.io/food-assets?download).
+
 ## License
 
 MIT License
@@ -32,7 +36,6 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
 
 [docs-img]: https://img.shields.io/badge/docs-dev-blue.svg
 [docs-url]: https://jorge-brito.github.io/Lynx.jl/dev/
