@@ -9,6 +9,9 @@ canvas  = Canvas(hexpand = true, vexpand = true)
 name    = Observable("image.png")
 image   = Image(asset"image.png", filter = :Good)
 
+# image = slice(image, 0, 0, 300, 300)
+# image = image[0:300, 0:300]
+
 mouse  = Mouse(canvas)
 pos    = Point(200, 100)
 zoom   = 1.0
@@ -51,9 +54,9 @@ onmousedrag(canvas) do event
     global pos += Point(mouse.dx, mouse.dy)
 end
 
-app = Window("Images", 1280, 720,
+app = Window("Images", 900, 800,
     Box(:v,
-        Paned(:v, position = 665,
+        Paned(:v, position = 750,
             Paned(:v, position = 60,
                 Box(:h, margin = 10, spacing = 5,
                     Button(updateimg, "insert-image", :Button, tooltip_text = "Select image"),
