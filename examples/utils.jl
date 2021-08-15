@@ -26,3 +26,5 @@ function Mouse(canvas::Canvas)
     end
     return this
 end
+
+Luxor.Point(this::Mouse) = Point(this.x, this.y)
