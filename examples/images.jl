@@ -7,10 +7,10 @@ include("utils.jl")
 
 canvas  = Canvas(hexpand = true, vexpand = true)
 name    = Observable("image.png")
-image   = Image(asset"image.png", filter = :Good)
+image   = Image(asset"image.png")
 
 # image = slice(image, 0, 0, 300, 300)
-# image = image[0:300, 0:300]
+# image = image[0, 0, 300, 300]
 
 mouse  = Mouse(canvas)
 pos    = Point(200, 100)
@@ -26,7 +26,7 @@ function setimage!(path::String)
     global image;
     if !isempty(path)
         name[] = basename(path)
-        image = Image(path, filter = :Good)
+        image = Image(path)
     end
 end
 
