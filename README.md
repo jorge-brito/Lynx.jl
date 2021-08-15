@@ -1,12 +1,13 @@
 # Lynx
 
-[![Build Status](https://github.com/jorge-brito/Lynx.jl/workflows/CI/badge.svg)](https://github.com/jorge-brito/Lynx.jl/actions)
+[![Build Status][build-img]][build-url]
+[![docs-img]][docs-url]
 
-Create interactive applications using the drawing tools from the 
+Create interactive applications using the drawing tools from 
 [Luxor.jl](https://github.com/JuliaGraphics/Luxor.jl) and the widget 
 toolkit from [Gtk.jl](https://github.com/JuliaGraphics/Gtk.jl).
 
-> Documentation of this package is in progress.
+> [Documentation][docs-url] of this package is in progress.
 
 ## License
 
@@ -31,3 +32,9 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+
+[docs-img]: https://img.shields.io/badge/docs-dev-blue.svg
+[docs-url]: https://jorge-brito.github.io/Lynx.jl/dev/
+[build-img]: https://github.com/jorge-brito/Lynx.jl/workflows/CI/badge.svg
+[build-url]: https://github.com/jorge-brito/Lynx.jl/actions
