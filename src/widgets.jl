@@ -1,10 +1,18 @@
 abstract type Widget{T} end
 
+gtype(::Type{Widget}) = GtkWidget
+gtype(::Type{<: Widget{T}}) where {T} = T
+
 # --------------------------------------------------------------------------------
 # ----------------------------------| Containers |--------------------------------
 # --------------------------------------------------------------------------------
 
 abstract type Container{T} <: Widget{T} end
+
+mutable struct NullContainer <: Container{Gtk.GtkNullContainer}
+    widget::Gtk.GtkWidget
+    NullContainer() = new(Gtk.GtkNullContainer())
+end
 
 mutable struct Window <: Container{GtkWindow}
     widget::GtkWidget
