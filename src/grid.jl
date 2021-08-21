@@ -7,11 +7,31 @@ mutable struct Grid <: Container{GtkGrid}
         self = new(@widget GtkGrid())
         self["column-homogeneous"] = homogeneous
         self["row-homogeneous"] = homogeneous
-        self["row-spacing"] = spacing
-        self["column-spacing"] = spacing
+        if spacing isa Real
+            self["row-spacing"] = spacing
+            self["column-spacing"] = spacing
+        elseif spacing isa Tuple{Real, Real}
+            self["row-spacing"] = spacing[1]
+            self["column-spacing"] = spacing[2]
+        end
         return self
     end
 end
+
+function attach!(grid::Grid, child::Widget, x::Int, y::Int, w::Int, h::Int)
+    grid[x: x + (w - 1), y:y + (h - 1)] = child
+end
+
+function attach!(grid::Grid, sibling::Widget, child::Widget, side::Symbol, w::Int, h::Int)
+    gtk_grid_attach_next_to(
+        gwidget(grid),
+        gwidget(sibling),
+        gwidget(child),
+        side,
+        w, h
+    )
+end
+
 """
 Represents a grid element that may span multiple rows and/or columns.
 
@@ -34,16 +54,22 @@ grid = Grid([
 ])
 ```
 """
-struct GridElement <: Iterable
-    width::Int
-    height::Int
+struct GridElement <: Widget{GtkWidget}
     widget::Widget
-    GridElement() = new(1, 1)
-    GridElement(w::Int, h::Int) = new(w, h)
-    GridElement(widget::Widget, w::Int, h::Int) = new(w, h, widget)
+    w::Int
+    h::Int
+    GridElement() = new(NullContainer(), 1, 1)
+    GridElement(w::Int, h::Int) = new(NullContainer(), w, h)
+    GridElement(widget::Widget, w::Int, h::Int) = new(widget, w, h)
+    GridElement(e::GridElement) = new(e.widget, e.w, e.h)
+    GridElement(widget::Widget) = new(widget, 1, 1)
 end
 
-(cell::GridElement)(widget::Widget) = GridElement(widget, cell.width, cell.height)
+GridElement(::typeof(-)) = GridElement()
+
+gwidget(this::GridElement) = gwidget(this.widget)
+
+(cell::GridElement)(widget::Widget) = GridElement(widget, cell.w, cell.h)
 """
         span(; rows = 1, cols = 1) -> GridElement
     
@@ -69,7 +95,10 @@ Creates a empty [`GridElement`](@ref) that spans multiple `columns`
 """
 cspan(columns::Int) = span(columns, 1)
 
-Base.isempty(element::GridElement) = !isdefined(element, :widget)
+Base.isempty(e::GridElement) = e.widget isa NullContainer
+
+const GridCell = Union{<:Widget, Tuple{}}
+
 """
         Grid(rows::Vector; props...) -> Grid
 
@@ -86,103 +115,27 @@ multiple cells within the grid.
 
 ```julia
 grid = Grid(
-    [Label("A"), Label("B")],
-    [Label("C"), Label("D")],
-    # span 2 columns
-    [Label("E") |> span(cols=2)]
+    Label("A"), Label("B"),     |,
+    Label("C"), Label("D"),     |,
+    Label("E") |> span(cols=2), |,
 )
 ```
 """
-function Grid(rows::Vector; props...)
+function Grid(cells::Union{<:Widget, typeof(-), typeof(|)}...; props...)
     self = Grid(; props...)
+    rows = splitv(x -> x == |, collect(cells)) 
     for (j, row) in enumerate(rows)
-        for (i, element) in enumerate(row)
-            if element isa Widget
-                self[i, j] = element
-            elseif element isa GridElement && !isempty(element)
-                w, h, widget = element
+        for (i, cell) in enumerate(row)
+            if cell isa GridElement && !isempty(cell)
+                w, h = cell.w, cell.h
                 x, y = i:i + w - 1, j: j + h - 1
-                self[x, y] = widget
+                self[x, y] = cell.widget
+            elseif cell isa Widget
+                self[i, j] = cell
             else
                 # ignore
             end
         end
     end
     return self
-end
-
-function Grid(cells::AbstractMatrix; props...)
-    return Grid(collect(eachrow(cells)); props...)
-end
-
-"""
-        Grid(layout::String, elements::NamedTuple; props...) -> Grid
-
-Create a `Grid` based on a layout.
-
-The `layout` argument is a `String` representation of the Grid.
-Each cell can be empty `.` or can have a name. Then, the `layout`
-will be transformed in an Array and every named cell will be 
-replaced by the widget in `elements` based on its name.
-
-Layout example:
-
-```julia
-layout = \"\"\"
-    header  .       . .       
-    sidebar section . items_a
-    .       .       . .
-    .       .       . items_b
-    footer  .       . .
-\"\"\"
-```
-The `.` (dot) character represents a empty cell that
-create space for element that span multiple cells.
-
-Each row is separated by the `\\n` (new-line) character
-and each cell by `space`. You can name each cell, as long
-as the name don't have spaces.
-
-Now we can use this `layout` and pass our widgets:
-
-```julia
-Grid(layout, (
-    header  = Button("Header")  |> cspan(4),
-    sidebar = Button("Sidebar") |> rspan(3),
-    section = Button("Section") |> span(2, 3),
-    items_a = Button("Items A") |> rspan(2),
-    items_b = Button("Items B"),
-    footer  = Button("Footer") |> cspan(4)
-)),
-```
-
-"""
-function Grid(layout::String, elements::NamedTuple; props...)
-    rows = map(split(layout, "\n")) do row
-        row = filter(!isempty, split(row, r"\s+"))
-        map(row) do name
-            if name == "."
-                return GridElement()
-            elseif hasproperty(elements, Symbol(name))
-                return getproperty(elements, Symbol(name))
-            else
-                return GridElement()
-            end
-        end
-    end
-    return Grid(rows; props...)
-end
-
-function Grid(rows::Pair{String, <:Widget}...; label = (str) -> Label(str, halign=Start, valign=Center), props...)
-    _rows = []
-    for (key, widget) in rows
-        row = []
-        if startswith(key, "#") # hide
-            append!(row, [widget |> cspan(2), span()])
-        else
-            append!(row, [label(key), widget])
-        end
-        push!(_rows, row)
-    end
-    return Grid(_rows; props...)
 end
