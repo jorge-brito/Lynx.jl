@@ -23,48 +23,45 @@ function App(title; width, height)
                 Item("ProgressBar", desc = "Displays progress visually" ,
                     ProgressBar(.50, hexpand=true)
                 ), # Item
-                Grid(spacing = 10, [
+                Grid(spacing = 10,
                     Item("ImageView", desc = "Displays an image",
                         ImageView(asset"image.png")
-                    ) Item("Picture", desc = "Displays an image with custom width and height",
+                    ),
+                    Item("Picture", desc = "Displays an image with custom width and height",
                         Picture(asset"image.png", 300, 300)
                     )
-                ]),
+                ),
                 Item("Slider", desc = "Horizontal slider",
                     centered=false,
                     Box(:h,
                         Slider(1:100, hexpand = true)
                     )
                 ), # Item
-                Grid(spacing = 10, halign = Center, [
-                    [
-                        Item("Button", desc = "A button that emits a signal when clicked on",
-                            Button("Button")
-                        ), # Item
-                        Item("ToggleButton", desc = "A button that maintain its state",
-                            ToggleButton("ToggleButton")
-                        ), # Item
-                        Item("Dropdown", desc = "A widget that allows the user to choose an item from a list of options.",
-                            Dropdown("Foo", "Bar", "Qux")
-                        ), # Item
-                        Item("ColorButton", desc = "Opens a color chooser dialog",
-                            ColorButton("#f1a")
-                        ), # Item
-                        Item("Switch", desc = "A “light switch” style toggle",
-                            Switch(false)
-                        ) # Item
-                    ]
-                ]),
-                Grid(spacing = 10, halign = Center, [
-                    [
-                        Item("TextField", desc = "A single line text entry widget.",
-                            TextField(text = "Hello, world!")
-                        ), # Item
-                        Item("SpinButton", desc = "Retrieves a number from the user",
-                            SpinButton(-50:50)
-                        ), # Item
-                    ]
-                ]),
+                Grid(spacing = 10, halign = Center,
+                    Item("Button", desc = "A button that emits a signal when clicked on",
+                        Button("Button")
+                    ), # Item
+                    Item("ToggleButton", desc = "A button that maintain its state",
+                        ToggleButton("ToggleButton")
+                    ), # Item
+                    Item("Dropdown", desc = "A widget that allows the user to choose an item from a list of options.",
+                        Dropdown("Foo", "Bar", "Qux")
+                    ), # Item
+                    Item("ColorButton", desc = "Opens a color chooser dialog",
+                        ColorButton("#f1a")
+                    ), # Item
+                    Item("Switch", desc = "A “light switch” style toggle",
+                        Switch(false)
+                    ) # Item
+                ),
+                Grid(spacing = 10, halign = Center,
+                    Item("TextField", desc = "A single line text entry widget.",
+                        TextField(text = "Hello, world!")
+                    ), # Item
+                    Item("SpinButton", desc = "Retrieves a number from the user",
+                        SpinButton(-50:50)
+                    ), # Item
+                ),
                 Frame("",
                     Expander("Expander", halign = Center, margin = 20,
                         Box(:v, spacing = 10, margin = 20,
@@ -75,11 +72,12 @@ function App(title; width, height)
                     )
                 ),
                 Item("Grid", 
-                    Grid(spacing = 20, [
-                        Button("□") Button("□") Button("□")
-                        Button("□") Button("□") Button("□")
-                        Button("□") Button("□") Button("□")
-                    ])
+                    Grid(spacing = 20,
+                        Button("header") |> cspan(3),                         |,
+                        Button("body")   |> span(2, 2), -, Button("items-a"), |,
+                        -,                              -, Button("items-b"), |,
+                        Button("footer") |> cspan(3),                         |,
+                    )
                 )
             ) # Box
         ) # Scrolled
