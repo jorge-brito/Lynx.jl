@@ -13,5 +13,6 @@ include("widgets.jl")
     include("../examples/events.jl")
     include("../examples/images.jl")
     include("../examples/random.jl")
+    include("../examples/widgets.jl")
     include("../examples/spritesheet.jl")
 end
