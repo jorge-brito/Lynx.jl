@@ -1,7 +1,7 @@
-gwidget(w::Widget) = getfield(w, :widget)
-getprop(w::Widget, name::SymString, T::DataType) = getprop(w.widget, name, T)
-setprop!(w::Widget, name::SymString, value::T) where {T} = setprop!(w.widget, name, value)
-disconnect(w::Widget, id) = disconnect(w.widget, id)
+gwidget(w::T) where T <: Widget = getfield(w, :widget)
+getprop(w::Widget, name::SymString, T::DataType) = getprop(gwidget(w), name, T)
+setprop!(w::Widget, name::SymString, value::T) where {T} = setprop!(gwidget(w), name, value)
+disconnect(w::Widget, id) = disconnect(gwidget(w), id)
 
 Base.get(w::Widget, name::SymString, T::DataType) = getprop(w, name, T)
 Base.getindex(w::Widget, name::SymString, T::DataType) = getprop(w, name, T)
@@ -13,23 +13,23 @@ end
 
 function Base.push!(w::Container, children::Widget...)
     for child in children
-        push!(w.widget, child.widget)
+        push!(gwidget(w), gwidget(child))
     end
 end
 
 function Base.setindex!(grid::Grid, child::Widget, indices::Vararg{Union{Int, UnitRange}})
-    setindex!(grid.widget, child.widget, indices...)
+    setindex!(gwidget(grid), gwidget(child), indices...)
 end
 
 Observables.on(f, input::Input; kwargs...) = on(f, input.value; kwargs...)
 
-Gtk.showall(w::Widget) = Gtk.showall(w.widget)
-Gtk.width(w::Widget) = Gtk.width(w.widget)
-Gtk.height(w::Widget) = Gtk.height(w.widget)
-Gtk.destroy(w::Widget) = Gtk.destroy(w.widget)
+Gtk.showall(w::Widget) = Gtk.showall(gwidget(w))
+Gtk.width(w::Widget) = Gtk.width(gwidget(w))
+Gtk.height(w::Widget) = Gtk.height(gwidget(w))
+Gtk.destroy(w::Widget) = Gtk.destroy(gwidget(w))
 
 Base.size(w::Widget) = (Gtk.width(w), Gtk.height(w))
-Base.show(w::Widget) = Gtk.show(w.widget)
+Base.show(w::Widget) = Gtk.show(gwidget(w))
 
 Base.show(io::IO, ::T) where {T <: Widget} = write(io, "$T")
 
@@ -59,7 +59,7 @@ function value!(w::ColorButton{T}, value::Colorant) where {T}
     w["rgba"] = convert(GdkRGBA, value)
 end
 
-value!(input::Activable, value::Bool) = G.active(input.widget, value)
+value!(input::Activable, value::Bool) = G.active(gwidget(input), value)
 
 value!(input::Switch, value::Bool) = setprop!(input, :active, value)
 
