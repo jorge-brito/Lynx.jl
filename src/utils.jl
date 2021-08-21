@@ -31,16 +31,25 @@ macro map(expr...)
 end
 
 macro widget(expr)
-    name = gensym("widget")
-    quote
-        begin
-            $(name) = $(expr)
-            for (prop, value) in pairs(props)
-                setprop!($(name), prop, value)
+    if @capture(expr, mutable struct name_ <: super_ fields__ end)
+        quote
+            mutable struct $name <: Widget{Lynx.gtype($super)}
+                $(fields...)
             end
-            $(name)
-        end
-    end |> esc
+            Lynx.gwidget(w::$name) = Lynx.gwidget(getfield(w, :widget))
+        end |> esc
+    else
+        name = gensym("widget")
+        quote
+            begin
+                $(name) = $(expr)
+                for (prop, value) in pairs(props)
+                    setprop!($(name), prop, value)
+                end
+                $(name)
+            end
+        end |> esc
+    end
 end
 
 macro container(expr)
@@ -51,8 +60,8 @@ macro container(expr)
             for (prop, value) in pairs(props)
                 setprop!($(name), prop, value)
             end
-            for (child) in children
-                push!($(name), child.widget)
+            for child in children
+                push!($(name), gwidget(child))
             end
             $(name)
         end
@@ -149,3 +158,19 @@ macro gcpreserve(expr)
         end |> esc
     end
 end
+
+function splitv(f::Function, array::AbstractVector{T}) where {T}
+    i = 1
+    result = Vector{T}[ T[] ]
+    foreach(array) do element
+        if f(element)
+            i += 1
+            push!(result, T[])
+        else
+            push!(result[i], element)
+        end
+    end
+    return filter(!isempty, result)
+end
+
+splitv(x::T, array::AbstractVector{T}) where {T} = splitv(==(x), array)
