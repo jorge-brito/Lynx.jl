@@ -15,11 +15,6 @@ export input!
 export save!
 export warn!
 
-mutable struct NullContainer <: Container{Gtk.GtkNullContainer}
-    widget::Gtk.GtkWidget
-    NullContainer() = new(Gtk.GtkNullContainer())
-end
-
 """
         file!(title::String; filters = String[], parent = NullContainer()) -> String
 
