@@ -113,6 +113,7 @@ export ImageView
 export Input
 export Label
 export Notebook
+export NullContainer
 export Paned
 export ProgressBar
 export RangeWidget
@@ -148,6 +149,7 @@ export use!
 export value
 export value!
 export gkey
+export gwidget
 export keyname
 export onkeypress
 export waitfor
@@ -185,6 +187,7 @@ export @width
 export @window
 export @key_str
 export @showall
+export @widget
 
 # Trick to get intellisense on vs-code
 if (false) include("../test/runtests.jl") end
