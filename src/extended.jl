@@ -23,3 +23,15 @@ end
 
 gdk_keyval_name(keyval::Cuint) = @ccall libgdk.gdk_keyval_name(keyval::Cuint)::Ptr{UInt8}
 keyval_name(keyval::Cuint) = Gtk.bytestring(gdk_keyval_name(keyval))
+
+function gtk_grid_attach_next_to(grid::GtkGrid, child::GtkWidget, sibling::GtkWidget, side::Symbol, width::Int, height::Int)
+    side = getfield(Gtk.GtkPositionType, side)
+    @ccall libgtk.gtk_grid_attach_next_to(
+        grid::Ptr{GObject},
+        child::Ptr{GObject},
+        sibling::Ptr{GObject},
+        side::Cint,
+        width::Cint,
+        height::Cint
+    )::Cvoid
+end
